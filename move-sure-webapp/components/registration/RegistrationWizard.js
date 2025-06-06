@@ -9,6 +9,17 @@ import IndustryCategory from './steps/IndustryCategory';
 import BranchDetails from './steps/BranchDetails';
 import StaffDetails from './steps/StaffDetails';
 import RegistrationComplete from './steps/RegistrationComplete';
+import { 
+  Globe, 
+  Building2, 
+  User, 
+  Factory, 
+  MapPin, 
+  Users, 
+  CheckCircle, 
+  Sparkles,
+  Home
+} from 'lucide-react';
 
 export default function RegistrationWizard({ onLoadingChange }) {
   const [currentStep, setCurrentStep] = useState(0);
@@ -75,35 +86,35 @@ export default function RegistrationWizard({ onLoadingChange }) {
       title: 'Preferences', 
       component: LanguagePreferences,
       description: 'Language and theme settings',
-      icon: '🌐',
+      icon: <Globe className="w-6 h-6" />,
       estimatedTime: '1 min'
     },
     { 
       title: 'Company Info', 
       component: CompanyDetails,
       description: 'Business registration details',
-      icon: '🏢',
+      icon: <Building2 className="w-6 h-6" />,
       estimatedTime: '3 min'
     },
     { 
       title: 'Admin Details', 
       component: OwnerDetails,
       description: 'Super admin account setup',
-      icon: '👤',
+      icon: <User className="w-6 h-6" />,
       estimatedTime: '2 min'
     },
     { 
       title: 'Business Category', 
       component: IndustryCategory,
       description: 'Industry and business type',
-      icon: '🏭',
+      icon: <Factory className="w-6 h-6" />,
       estimatedTime: '1 min'
     },
     { 
       title: 'Branch Setup', 
       component: BranchDetails,
       description: 'Configure business locations',
-      icon: '🏪',
+      icon: <MapPin className="w-6 h-6" />,
       estimatedTime: '2 min',
       optional: true
     },
@@ -111,7 +122,7 @@ export default function RegistrationWizard({ onLoadingChange }) {
       title: 'Team Setup', 
       component: StaffDetails,
       description: 'Add staff members',
-      icon: '👥',
+      icon: <Users className="w-6 h-6" />,
       estimatedTime: '3 min',
       optional: true
     },
@@ -119,7 +130,7 @@ export default function RegistrationWizard({ onLoadingChange }) {
       title: 'Complete', 
       component: RegistrationComplete,
       description: 'Finalize registration',
-      icon: '✅',
+      icon: <CheckCircle className="w-6 h-6" />,
       estimatedTime: '1 min'
     }
   ];
@@ -181,10 +192,10 @@ export default function RegistrationWizard({ onLoadingChange }) {
         <div className="flex items-center justify-center mb-6">
           <div className="relative">
             <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl flex items-center justify-center shadow-lg">
-              <span className="text-3xl font-bold text-white">M</span>
+              <Home className="w-8 h-8 text-white" />
             </div>
             <div className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm">✨</span>
+              <Sparkles className="w-4 h-4 text-white" />
             </div>
           </div>
         </div>
@@ -192,22 +203,6 @@ export default function RegistrationWizard({ onLoadingChange }) {
           Welcome to <span className="gradient-text bg-gradient-to-r from-blue-600 to-purple-600">MOVESURE</span>
         </h1>
         <p className="text-gray-600 text-lg">Let's set up your business account step by step</p>
-        
-        {/* Quick Stats */}
-        {/* <div className="flex justify-center space-x-8 mt-6">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">2M+</div>
-            <div className="text-sm text-gray-600">Businesses Trust Us</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">99.9%</div>
-            <div className="text-sm text-gray-600">Uptime Guaranteed</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">24/7</div>
-            <div className="text-sm text-gray-600">Expert Support</div>
-          </div>
-        </div> */}
       </div>
 
       {/* Enhanced Progress Bar */}
@@ -223,7 +218,7 @@ export default function RegistrationWizard({ onLoadingChange }) {
         {/* Step Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-2xl">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white">
               {steps[currentStep].icon}
             </div>
             <div>

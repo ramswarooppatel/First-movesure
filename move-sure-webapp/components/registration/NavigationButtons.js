@@ -1,4 +1,5 @@
 import Button from '@/components/common/Button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function NavigationButtons({ currentStep, totalSteps, onNext, onPrev, formData }) {
   const isLastStep = currentStep === totalSteps - 1;
@@ -11,7 +12,7 @@ export default function NavigationButtons({ currentStep, totalSteps, onNext, onP
           <Button 
             variant="secondary" 
             onClick={onPrev}
-            icon="←"
+            icon={<ChevronLeft className="w-4 h-4" />}
             size="lg"
           >
             Previous
@@ -34,7 +35,7 @@ export default function NavigationButtons({ currentStep, totalSteps, onNext, onP
           <Button 
             variant="primary" 
             onClick={onNext}
-            icon="→"
+            icon={<ChevronRight className="w-4 h-4" />}
             size="lg"
           >
             {currentStep === totalSteps - 2 ? 'Complete Setup' : 'Continue'}

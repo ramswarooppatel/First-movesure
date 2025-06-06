@@ -1,4 +1,5 @@
-// filepath: d:\Codes\companies\MOVESURE.IO\movesure\move-sure-webapp\components\common\Footer.js
+import { Home, Facebook, Twitter, Instagram, Linkedin, Heart } from "lucide-react";
+
 export default function Footer() {
   return (
     <footer className="relative bg-gray-900 text-white overflow-hidden">
@@ -17,7 +18,7 @@ export default function Footer() {
           <div className="lg:col-span-2">
             <div className="flex items-center mb-6">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mr-4">
-                <span className="text-2xl">🏠</span>
+                <Home className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-3xl font-bold gradient-text bg-gradient-to-r from-blue-400 to-purple-400">
                 MOVESURE
@@ -30,9 +31,14 @@ export default function Footer() {
             
             {/* Social Links */}
             <div className="flex space-x-4">
-              {['📘', '🐦', '📸', '💼'].map((icon, index) => (
+              {[
+                <Facebook className="w-5 h-5" />,
+                <Twitter className="w-5 h-5" />,
+                <Instagram className="w-5 h-5" />,
+                <Linkedin className="w-5 h-5" />
+              ].map((icon, index) => (
                 <div key={index} className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-all duration-300 cursor-pointer group">
-                  <span className="text-xl group-hover:scale-110 transition-transform duration-300">{icon}</span>
+                  <div className="text-white group-hover:scale-110 transition-transform duration-300">{icon}</div>
                 </div>
               ))}
             </div>
@@ -111,7 +117,7 @@ export default function Footer() {
             <a href="#" className="hover:text-blue-400 transition-colors duration-300 ml-1">Terms of Service</a>
           </p>
           <div className="flex items-center text-gray-400 text-sm">
-            Made with <span className="text-red-400 mx-1">❤️</span> for better moving experiences
+            Made with <Heart className="w-4 h-4 text-red-400 mx-1" /> for better moving experiences
           </div>
         </div>
       </div>

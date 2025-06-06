@@ -1,4 +1,17 @@
 import Button from "./Button";
+import { 
+  Sparkles, 
+  Rocket, 
+  Users, 
+  CheckCircle, 
+  Headphones, 
+  Building, 
+  Factory, 
+  Store, 
+  ShoppingBag, 
+  Landmark,
+  LogIn,
+} from "lucide-react";
 
 export default function Hero() {
   return (
@@ -30,7 +43,7 @@ export default function Hero() {
         <div className="animate-fade-in-up">
           {/* Enhanced Badge */}
           <div className="inline-flex items-center px-6 py-3 rounded-full glass-effect text-indigo-700 dark:text-indigo-300 text-sm font-semibold mb-8 border border-indigo-200/50 dark:border-indigo-700/50 shadow-lg">
-            <span className="w-2 h-2 bg-emerald-400 rounded-full mr-3 animate-pulse"></span>
+            <div className="w-2 h-2 bg-emerald-400 rounded-full mr-3 animate-pulse"></div>
             <span className="bg-gradient-to-r from-indigo-600 to-cyan-600 bg-clip-text text-transparent font-bold">NEW</span>
             <span className="mx-2">•</span>
             AI-Powered Moving Assistant
@@ -60,7 +73,7 @@ export default function Hero() {
               variant="primary" 
               size="lg" 
               href="/register"
-              icon="🚀"
+              icon={<Rocket className="w-5 h-5" />}
               className="min-w-[220px] animate-pulse-glow"
             >
               Start Your Journey
@@ -69,41 +82,47 @@ export default function Hero() {
               variant="glass" 
               size="lg" 
               href="/login"
-              icon="👋"
+              icon={<LogIn className="w-5 h-5" />}
               className="min-w-[220px]"
             >
               Welcome Back
             </Button>
           </div>
 
-          {/* Enhanced Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {[
-              { number: "50K+", label: "Happy Customers", icon: "😊", color: "emerald" },
-              { number: "99.9%", label: "Success Rate", icon: "✅", color: "indigo" },
-              { number: "24/7", label: "Support Available", icon: "🛟", color: "cyan" }
-            ].map((stat, index) => (
-              <div 
-                key={index} 
-                className="glass-effect rounded-2xl p-8 text-center group hover:bg-white/90 dark:hover:bg-slate-800/50 transition-all duration-300 border border-slate-200/50 dark:border-slate-600/30 shadow-lg hover:shadow-xl animate-bounce-in"
-                style={{ animationDelay: `${index * 200}ms` }}
-              >
-                <div className="text-4xl mb-3">{stat.icon}</div>
-                <div className={`text-3xl font-bold bg-gradient-to-r from-${stat.color}-600 to-${stat.color}-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-300`}>
-                  {stat.number}
-                </div>
-                <div className="text-slate-600 dark:text-slate-400 text-sm font-medium">{stat.label}</div>
-              </div>
-            ))}
-          </div>
+        {/* Enhanced Stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                    {[
+                      { number: "AI-Powered", label: "Moving Technology", icon: <Sparkles className="w-8 h-8" />, color: "green" },
+                      { number: "Fast", label: "Implementation", icon: <Rocket className="w-8 h-8" />, color: "indigo" },
+                      { number: "24/7", label: "Customer Support", icon: <Headphones className="w-8 h-8" />, color: "cyan" }
+                    ].map((stat, index) => (
+                      <div 
+                        key={index} 
+                        className="glass-effect rounded-2xl p-8 text-center group hover:bg-white/90 dark:hover:bg-slate-800/50 transition-all duration-300 border border-slate-200/50 dark:border-slate-600/30 shadow-lg hover:shadow-xl animate-bounce-in"
+                        style={{ animationDelay: `${index * 200}ms` }}
+                      >
+                        <div className="text-indigo-500 dark:text-indigo-400 mb-3 flex justify-center">{stat.icon}</div>
+                        <div className={`text-3xl font-bold bg-gradient-to-r from-${stat.color}-600 to-${stat.color}-500 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-300`}>
+                          {stat.number}
+                        </div>
+                        <div className="text-slate-600 dark:text-slate-400 text-sm font-medium">{stat.label}</div>
+                      </div>
+                    ))}
+                  </div>
 
-          {/* Trust Indicators */}
+                  {/* Trust Indicators */}
           <div className="mt-16 flex items-center justify-center space-x-8 opacity-60">
             <span className="text-sm text-slate-500 dark:text-slate-400">Trusted by leading companies:</span>
-            {['🏢', '🏭', '🏪', '🏬', '🏛️'].map((icon, index) => (
+            {[
+              <Building className="w-6 h-6" />,
+              <Factory className="w-6 h-6" />,
+              <Store className="w-6 h-6" />,
+              <ShoppingBag className="w-6 h-6" />,
+              <Landmark className="w-6 h-6" />
+            ].map((icon, index) => (
               <div 
                 key={index}
-                className="w-8 h-8 flex items-center justify-center text-2xl opacity-70 hover:opacity-100 transition-opacity duration-300"
+                className="w-8 h-8 flex items-center justify-center text-slate-400 opacity-70 hover:opacity-100 transition-opacity duration-300"
               >
                 {icon}
               </div>
