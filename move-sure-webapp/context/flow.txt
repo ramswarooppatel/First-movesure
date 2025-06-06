@@ -1,0 +1,49 @@
+1. Company Registration
+
+Admin enters:
+
+Company Name
+
+Registration Number
+
+GST Number (optional)
+
+Aadhaar Number (optional)
+
+City, State
+
+Language, Theme, Category
+
+Admin User Details (First Name, Last Name, Mobile, Email, Username, Password)
+
+➡️ Result:
+
+A new company is created
+
+A default branch is created (head office)
+
+A user is created as super_admin tied to that branch & company
+
+2. Branch Creation
+
+Admin can create additional branches
+
+Each branch is tied to the parent company
+
+3. Staff Invite
+
+Admin inputs mobile/email of new staff
+
+Staff is assigned a role: branch_manager or branch_staff
+
+A login/invite token is generated and sent
+
+Staff completes their profile after clicking the invite link
+
+4. Login System
+
+Users can login with:
+
+Username + Password
+
+OR Phone Number + Password
