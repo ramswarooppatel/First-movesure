@@ -1,10 +1,11 @@
 "use client";
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import InputField from '@/components/common/InputField';
 import { MapPin } from 'lucide-react';
 
 export default function AddressComponent({ 
   data = {}, 
+  value = {}, // Add value prop for auto-fill support
   onChange, 
   title = "Address Information",
   backgroundColor = "bg-purple-50",
@@ -14,13 +15,55 @@ export default function AddressComponent({
   required = false,
   showCountry = true,
   countryValue = "India",
-  prefix = ""
+  prefix = "",
+  autoFill = false, // New prop to indicate auto-fill mode
+  forceUpdate = null // New prop to force updates
 }) {
   // Refs for pincode inputs
   const pincodeRefs = useRef([]);
+  
+  // State to track current address data
+  const [currentData, setCurrentData] = useState(data);
+
+  // Auto-fill effect - watch for changes in value prop and update data
+  useEffect(() => {
+    console.log('AddressComponent: Auto-fill effect triggered', { value, data, autoFill });
+    
+    // If value prop is provided (for auto-fill), merge it with existing data
+    if (value && Object.keys(value).length > 0) {
+      const mergedData = {
+        ...currentData,
+        ...value,
+        // Handle multiple address field variations
+        address: value.fullAddress || value.address || value.streetAddress || value.addressLine1 || currentData.address || '',
+        city: value.city || currentData.city || '',
+        state: value.state || currentData.state || '',
+        pincode: value.pincode || value.zipCode || value.postalCode || currentData.pincode || '',
+        country: value.country || currentData.country || countryValue || 'India'
+      };
+      
+      console.log('AddressComponent: Merged data for auto-fill', mergedData);
+      setCurrentData(mergedData);
+      
+      // Call onChange to sync with parent if this is an auto-fill
+      if (autoFill && onChange) {
+        onChange(mergedData);
+      }
+    }
+  }, [value, forceUpdate, autoFill]); // Watch value, forceUpdate, and autoFill props
+
+  // Also watch for changes in data prop (original behavior)
+  useEffect(() => {
+    if (data && Object.keys(data).length > 0) {
+      setCurrentData(prev => ({
+        ...prev,
+        ...data
+      }));
+    }
+  }, [data]);
 
   const handleChange = (field, value) => {
-    const updatedData = { ...data, [field]: value };
+    const updatedData = { ...currentData, [field]: value };
     
     // If state is changed, reset city and set pincode prefix
     if (field === 'state') {
@@ -31,12 +74,13 @@ export default function AddressComponent({
       }
     }
     
+    setCurrentData(updatedData);
     onChange(updatedData);
   };
 
   // Advanced pincode input handling
   const handlePincodeChange = (index, value) => {
-    const pincodeArray = (data.pincode || '').split('').slice(0, 6);
+    const pincodeArray = (currentData.pincode || '').split('').slice(0, 6);
     while (pincodeArray.length < 6) pincodeArray.push('');
     
     // Handle input
@@ -55,7 +99,7 @@ export default function AddressComponent({
   };
 
   const handlePincodeKeyDown = (index, e) => {
-    const pincodeArray = (data.pincode || '').split('').slice(0, 6);
+    const pincodeArray = (currentData.pincode || '').split('').slice(0, 6);
     while (pincodeArray.length < 6) pincodeArray.push('');
 
     // Handle backspace
@@ -166,7 +210,7 @@ export default function AddressComponent({
     'Lakshadweep', 'Andaman and Nicobar Islands'
   ];
 
-  // Cities mapped by state - Comprehensive list with 20+ cities per state
+  // Cities mapped by state - keeping your existing comprehensive list
   const citiesByState = {
     'Andhra Pradesh': [
       'Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Kurnool', 'Rajahmundry', 
@@ -422,8 +466,8 @@ export default function AddressComponent({
     ]
   };
 
-  const selectedStateCities = data.state ? (citiesByState[data.state] || []) : [];
-  const pincodeArray = (data.pincode || '').split('').slice(0, 6);
+  const selectedStateCities = currentData.state ? (citiesByState[currentData.state] || []) : [];
+  const pincodeArray = (currentData.pincode || '').split('').slice(0, 6);
   while (pincodeArray.length < 6) pincodeArray.push('');
 
   return (
@@ -433,13 +477,28 @@ export default function AddressComponent({
           <MapPin className="w-4 h-4 text-white" />
         </div>
         {title}
+        {autoFill && (
+          <span className="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+            Auto-filled
+          </span>
+        )}
       </h3>
+      
+      {/* Debug info in development mode */}
+      {/* {process.env.NODE_ENV === 'development' && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs">
+          <strong>AddressComponent Debug:</strong>
+          <div>Current Data: {JSON.stringify(currentData, null, 2)}</div>
+          <div>Value Prop: {JSON.stringify(value, null, 2)}</div>
+          <div>Auto-fill: {autoFill ? 'Yes' : 'No'}</div>
+        </div>
+      )} */}
       
       <div className="space-y-4">
         <InputField
           label={`${prefix ? prefix + ' ' : ''}Address`}
           placeholder={`Enter complete ${prefix ? prefix.toLowerCase() + ' ' : ''}address`}
-          value={data.address || ''}
+          value={currentData.address || ''}
           onChange={(value) => handleChange('address', value)}
           required={required}
         />
@@ -450,7 +509,7 @@ export default function AddressComponent({
               State {required && <span className="text-red-500">*</span>}
             </label>
             <select
-              value={data.state || ''}
+              value={currentData.state || ''}
               onChange={(e) => handleChange('state', e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-gray-800"
               required={required}
@@ -467,18 +526,18 @@ export default function AddressComponent({
               City {required && <span className="text-red-500">*</span>}
             </label>
             <select
-              value={data.city || ''}
+              value={currentData.city || ''}
               onChange={(e) => handleChange('city', e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-gray-800"
               required={required}
-              disabled={!data.state}
+              disabled={!currentData.state}
             >
               <option value="" className="text-gray-500">Select City</option>
               {selectedStateCities.map(city => (
                 <option key={city} value={city} className="text-gray-800">{city}</option>
               ))}
             </select>
-            {!data.state && (
+            {!currentData.state && (
               <p className="text-xs text-gray-500 mt-1">Please select a state first</p>
             )}
           </div>
@@ -512,7 +571,7 @@ export default function AddressComponent({
         {showCountry && (
           <InputField
             label="Country"
-            value={data.country || countryValue}
+            value={currentData.country || countryValue}
             onChange={(value) => handleChange('country', value)}
             disabled
           />
