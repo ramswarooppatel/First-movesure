@@ -4,6 +4,7 @@ import InputField from '@/components/common/InputField';
 import Button from '@/components/common/Button';
 import AddressComponent from '@/components/common/AddressComponent';
 import ClockComponent from '@/components/common/ClockComponent';
+import CalendarComponent from '@/components/common/CalendarComponent';
 import { Building2, MapPin, Clock, Phone, Mail, User, Trash2, Plus, Copy, CheckCircle, Edit3, ChevronDown, ChevronUp, Wand2 } from 'lucide-react';
 
 export default function BranchDetails({ data, updateData }) {
@@ -573,6 +574,14 @@ export default function BranchDetails({ data, updateData }) {
                           required
                         />
                         
+                        <CalendarComponent
+                          label="Branch Established Date"
+                          value={branch.established_date || ''}
+                          onChange={(value) => updateBranch(branch.id, 'established_date', value)}
+                          placeholder="Select establishment date"
+                          disableFutureDates={true}
+                        />
+                        
                         {/* Enhanced Branch Code with Auto-Generate */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -767,20 +776,28 @@ export default function BranchDetails({ data, updateData }) {
                       </h5>
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <ClockComponent
-                            label="Opening Time"
-                            value={branch.opening_time}
-                            onChange={(value) => updateBranch(branch.id, 'opening_time', value)}
-                            placeholder="Select opening time"
-                            required
-                          />
-                          <ClockComponent
-                            label="Closing Time"
-                            value={branch.closing_time}
-                            onChange={(value) => updateBranch(branch.id, 'closing_time', value)}
-                            placeholder="Select closing time"
-                            required
-                          />
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Opening Time
+                            </label>
+                            <input
+                              type="time"
+                              value={branch.opening_time}
+                              onChange={(e) => updateBranch(branch.id, 'opening_time', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Closing Time
+                            </label>
+                            <input
+                              type="time"
+                              value={branch.closing_time}
+                              onChange={(e) => updateBranch(branch.id, 'closing_time', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
                         </div>
 
                         {/* Working Days */}
@@ -821,32 +838,32 @@ export default function BranchDetails({ data, updateData }) {
         })}
 
         {/* Add Another Branch Button */}
-        <div className="text-center space-y-3">
-          <button
-            onClick={() => addBranch(false)}
-            className="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 w-full max-w-md"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Add New Branch
-          </button>
-          
-          {companyDetails.name && (
+          <div className="text-center space-y-3">
             <button
-              onClick={() => addBranch(true)}
-              className="inline-flex items-center px-6 py-3 text-base font-medium rounded-xl text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 w-full max-w-md"
+              onClick={() => addBranch(false)}
+              className="inline-flex items-center px-6 py-3 border-2 border-gray-900 text-base font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 w-full max-w-md"
             >
-              <Copy className="w-5 h-5 mr-2" />
-              Add Branch with Company Details
+              <Plus className="w-5 h-5 mr-2" />
+              Add New Branch
             </button>
-          )}
-        </div>
-      </div>
+            
+            {companyDetails.name && (
+              <button
+                onClick={() => addBranch(true)}
+                className="inline-flex items-center px-6 py-3 border-2 border-blue-600 text-base font-medium rounded-xl text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 w-full max-w-md"
+              >
+                <Copy className="w-5 h-5 mr-2" />
+                Add Branch with Company Details
+              </button>
+            )}
+          </div>
+              </div>
 
-      {/* Enhanced Summary */}
+              {/* Enhanced Summary */}
       {branches.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
           <h4 className="text-lg font-semibold text-blue-900 mb-3">Branch Summary</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
             <div>
               <span className="text-blue-700 font-medium">Total Branches:</span>
               <span className="ml-2 text-blue-900 font-bold">{branches.length}</span>
@@ -863,12 +880,12 @@ export default function BranchDetails({ data, updateData }) {
                 {branches.filter(b => b.is_active).length}
               </span>
             </div>
-            <div>
+            {/* <div>
               <span className="text-blue-700 font-medium">Expanded:</span>
               <span className="ml-2 text-blue-900 font-bold">
                 {Object.values(expandedBranches).filter(Boolean).length}
               </span>
-            </div>
+            </div> */}
           </div>
           
           <div className="mt-4 p-3 bg-blue-100 rounded-lg">
