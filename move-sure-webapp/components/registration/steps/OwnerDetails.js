@@ -8,6 +8,7 @@ import AadhaarComponent from '@/components/common/AadhaarComponent';
 import PhoneVerificationComponent from '@/components/common/PhoneVerificationComponent';
 import EmailVerificationComponent from '@/components/common/EmailVerificationComponent';
 import PhotoUpload from '@/components/common/PhotoUpload';
+import UsernameField from '@/components/common/UsernameField';
 import { 
   User, 
   Phone, 
@@ -30,6 +31,7 @@ export default function OwnerDetails({ data, updateData, onLoadingChange }) {
   const [owner, setOwner] = useState(data.owner || {});
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [usernameValid, setUsernameValid] = useState(false);
 
   const handleChange = (field, value) => {
     const updatedOwner = { ...owner, [field]: value };
@@ -338,27 +340,16 @@ export default function OwnerDetails({ data, updateData, onLoadingChange }) {
           Account Credentials
         </h3>
         
-        <div className="space-y-4">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-black flex items-center">
-                <User className="w-4 h-4 mr-1" />
-                Username <span className="text-red-500">*</span>
-              </label>
-              <button
-                onClick={generateUsername}
-                disabled={!owner.firstName || !owner.lastName}
-                className="text-xs px-3 py-1 border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
-                Generate
-              </button>
-            </div>
-            <InputField
-              placeholder="Choose a unique username"
-              value={owner.username || ''}
-              onChange={(value) => handleChange('username', value.toLowerCase())}
-            />
-          </div>
+        <div className="space-y-6">
+          {/* Username Field with Validation */}
+          <UsernameField
+            value={owner.username || ''}
+            onChange={(value) => handleChange('username', value)}
+            onValidationChange={setUsernameValid}
+            firstName={owner.firstName}
+            lastName={owner.lastName}
+            required={true}
+          />
           
           <div>
             <label className="block text-sm font-medium text-black mb-2 flex items-center">
@@ -409,6 +400,21 @@ export default function OwnerDetails({ data, updateData, onLoadingChange }) {
                 </p>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Validation Status */}
+        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+          <div className="text-sm font-medium text-gray-700 mb-2">Account Status:</div>
+          <div className="space-y-1 text-xs">
+            <div className={`flex items-center ${usernameValid ? 'text-green-600' : 'text-red-600'}`}>
+              {usernameValid ? <CheckCircle className="w-3 h-3 mr-1" /> : <X className="w-3 h-3 mr-1" />}
+              Username validated
+            </div>
+            <div className={`flex items-center ${passwordStrength >= 3 ? 'text-green-600' : 'text-red-600'}`}>
+              {passwordStrength >= 3 ? <CheckCircle className="w-3 h-3 mr-1" /> : <X className="w-3 h-3 mr-1" />}
+              Strong password
+            </div>
           </div>
         </div>
       </div>

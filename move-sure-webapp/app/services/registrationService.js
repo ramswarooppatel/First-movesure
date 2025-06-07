@@ -1,6 +1,6 @@
 // services/registrationService.js
 import { supabaseAdmin } from '@/utils/supabase'
-import bcrypt from 'bcryptjs'
+import { AuthUtils } from '@/utils/auth'
 import jwt from 'jsonwebtoken'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -115,7 +115,7 @@ class RegistrationService {
     }
   }
 
-  // Create users (staff members)
+  // Create users (staff members) - Updated with password hashing
   async createUsers(companyId, staffData, branches) {
     try {
       if (!staffData || staffData.length === 0) {
@@ -126,7 +126,7 @@ class RegistrationService {
       
       for (const staff of staffData) {
         // Hash password if provided
-        const passwordHash = staff.password ? await bcrypt.hash(staff.password, 12) : null
+        const passwordHash = staff.password ? await AuthUtils.hashPassword(staff.password) : null
 
         // Find appropriate branch
         const assignedBranch = branches.find(b => 
@@ -145,7 +145,7 @@ class RegistrationService {
           username: staff.username || staff.email,
           email: staff.email,
           phone: staff.phone,
-          phone_verified: staff.phone_verified || false,
+          phone_verified: staff.phone_verified || staff.phoneVerified || false,
           password_hash: passwordHash,
           aadhar_number: staff.aadhar_number || staff.aadhaarNumber || null,
           pan_number: staff.pan_number || staff.panNumber || null,
@@ -172,12 +172,13 @@ class RegistrationService {
         })
       }
 
-      console.log('Creating users with cleaned data:', userInserts.map(u => ({
+      console.log('Creating users with data:', userInserts.map(u => ({
         username: u.username,
         email: u.email,
         role: u.role,
         date_of_birth: u.date_of_birth,
-        joining_date: u.joining_date
+        joining_date: u.joining_date,
+        has_password: !!u.password_hash
       })))
 
       const { data, error } = await supabaseAdmin

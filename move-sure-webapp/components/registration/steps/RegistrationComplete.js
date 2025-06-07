@@ -1,30 +1,11 @@
 "use client";
-import { useState } from 'react';
-import Button from '@/components/common/Button';
-import { 
-  Rocket, 
-  HelpCircle, 
-  PartyPopper, 
-  Download, 
-  Eye, 
-  CheckCircle, 
-  Building2, 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  FileText, 
-  Users, 
-  Factory,
-  X,
-  Calendar,
-  Shield,
-  Globe,
-  Briefcase,
-  Hash,
-  Camera,
-  Loader
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import PartyPopperEffect from '../effects/PartyPopperEffect';
+import SuccessHeader from '../components/SuccessHeader';
+import SummaryCards from '../components/SummaryCards';
+import ActionButtons from '../components/ActionButtons';
+import DetailedSummary from '../components/DetailedSummary';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 export default function RegistrationComplete({ data, updateData }) {
   const [showDetails, setShowDetails] = useState(false);
@@ -33,7 +14,15 @@ export default function RegistrationComplete({ data, updateData }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionResult, setSubmissionResult] = useState(null);
   const [submissionError, setSubmissionError] = useState(null);
-  const [authData, setAuthData] = useState(null)
+  const [authData, setAuthData] = useState(null);
+  const [showPartyPopper, setShowPartyPopper] = useState(false);
+
+  // Trigger party popper effect when registration is submitted successfully
+  useEffect(() => {
+    if (submissionResult && !showPartyPopper) {
+      setShowPartyPopper(true);
+    }
+  }, [submissionResult]);
 
   // Generate PDF content
   const generatePDF = async () => {
@@ -147,11 +136,11 @@ export default function RegistrationComplete({ data, updateData }) {
 
   // Submit registration to Supabase
   const submitRegistration = async () => {
-    setIsSubmitting(true)
-    setSubmissionError(null)
+    setIsSubmitting(true);
+    setSubmissionError(null);
 
     try {
-      console.log('Submitting registration data:', data)
+      console.log('Submitting registration data:', data);
       
       const response = await fetch('/api/register/complete', {
         method: 'POST',
@@ -161,52 +150,51 @@ export default function RegistrationComplete({ data, updateData }) {
           'X-Device-Name': 'Web Browser'
         },
         body: JSON.stringify(data)
-      })
+      });
 
-      console.log('Response status:', response.status)
-      console.log('Response headers:', response.headers)
+      console.log('Response status:', response.status);
 
       // Check if response is JSON
-      const contentType = response.headers.get('content-type')
+      const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        const textResponse = await response.text()
-        console.error('Non-JSON response:', textResponse)
-        throw new Error('Server returned invalid response format. Please check server logs.')
+        const textResponse = await response.text();
+        console.error('Non-JSON response:', textResponse);
+        throw new Error('Server returned invalid response format. Please check server logs.');
       }
 
-      const result = await response.json()
-      console.log('API Response:', result)
+      const result = await response.json();
+      console.log('API Response:', result);
 
       if (!response.ok) {
-        throw new Error(result.error || `Registration failed with status ${response.status}`)
+        throw new Error(result.error || `Registration failed with status ${response.status}`);
       }
 
       if (result.success) {
-        setSubmissionResult(result)
+        setSubmissionResult(result);
         
         // Store auth data if auto-login successful
         if (result.auth) {
-          setAuthData(result.auth)
+          setAuthData(result.auth);
           
           // Store tokens in localStorage/sessionStorage
-          localStorage.setItem('movesure_token', result.auth.token)
-          localStorage.setItem('movesure_refresh_token', result.auth.refreshToken)
-          localStorage.setItem('movesure_session', result.auth.sessionToken)
-          localStorage.setItem('movesure_user', JSON.stringify(result.auth.user))
+          localStorage.setItem('movesure_token', result.auth.token);
+          localStorage.setItem('movesure_refresh_token', result.auth.refreshToken);
+          localStorage.setItem('movesure_session', result.auth.sessionToken);
+          localStorage.setItem('movesure_user', JSON.stringify(result.auth.user));
           
           // Clear registration data
-          localStorage.removeItem('movesure_registration_form_data')
-          localStorage.removeItem('movesure_registration_current_step')
-          localStorage.removeItem('movesure_registration_last_saved')
+          localStorage.removeItem('movesure_registration_form_data');
+          localStorage.removeItem('movesure_registration_current_step');
+          localStorage.removeItem('movesure_registration_last_saved');
         }
         
-        console.log('Registration completed successfully:', result)
+        console.log('Registration completed successfully:', result);
       }
     } catch (error) {
-      console.error('Registration submission error:', error)
-      setSubmissionError(error.message)
+      console.error('Registration submission error:', error);
+      setSubmissionError(error.message);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   };
 
@@ -229,472 +217,60 @@ export default function RegistrationComplete({ data, updateData }) {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-      return new Date(dateString).toLocaleDateString();
-    } catch {
-      return dateString;
-    }
-  };
-
-  const maskSensitiveData = (data, length = 4) => {
-    if (!data) return 'N/A';
-    return '*'.repeat(Math.max(0, data.length - length)) + data.slice(-length);
-  };
-
   return (
-    <div className="space-y-8">
-      {/* Success Header */}
-      <div className="w-24 h-24 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
-        <PartyPopper className="w-12 h-12 text-white" />
-      </div>
-      
-      <h3 className="text-3xl font-bold text-gray-900 mb-4">
-        🎉 Welcome to MOVESURE!
-      </h3>
-      
-      <p className="text-gray-600 mb-8 max-w-lg mx-auto text-lg">
-        Congratulations! Your business account registration is ready. 
-        Click "Complete Registration" to finalize and create your account in our system.
-      </p>
+    <div className="relative min-h-screen">
+      {/* Party Popper Effect */}
+      <PartyPopperEffect 
+        isActive={showPartyPopper} 
+        onComplete={() => setShowPartyPopper(false)} 
+      />
 
-      {/* Quick Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 max-w-4xl mx-auto">
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <Building2 className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-          <div className="text-sm text-blue-600 font-medium">Company</div>
-          <div className="text-lg font-bold text-blue-900">{data.company?.name || 'Company Name'}</div>
-        </div>
-        
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-          <User className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-          <div className="text-sm text-purple-600 font-medium">Admin</div>
-          <div className="text-lg font-bold text-purple-900">
-            {data.owner?.firstName} {data.owner?.lastName}
-          </div>
-        </div>
-        
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <MapPin className="w-8 h-8 text-green-600 mx-auto mb-2" />
-          <div className="text-sm text-green-600 font-medium">Branches</div>
-          <div className="text-lg font-bold text-green-900">{data.branches?.length || 0}</div>
-        </div>
-        
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-          <Users className="w-8 h-8 text-orange-600 mx-auto mb-2" />
-          <div className="text-sm text-orange-600 font-medium">Staff</div>
-          <div className="text-lg font-bold text-orange-900">{data.staff?.length || 0}</div>
-        </div>
-      </div>
+      {/* Main Content */}
+      <div className="space-y-8 relative z-10">
+        {/* Success Header */}
+        <SuccessHeader isSubmitted={!!submissionResult} />
 
-      {/* Action Buttons */}
-      <div className="space-y-4 mb-8">
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="inline-flex items-center px-6 py-3 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-colors font-medium"
-          >
-            <Eye className="w-5 h-5 mr-2" />
-            {showDetails ? 'Hide Details' : 'View All Details'}
-          </button>
-          
-          <button
-            onClick={generatePDF}
-            disabled={isDownloading}
-            className="inline-flex items-center px-6 py-3 bg-green-100 text-green-700 rounded-xl hover:bg-green-200 transition-colors font-medium disabled:opacity-50"
-          >
-            {isDownloading ? (
-              <>
-                <div className="w-5 h-5 mr-2 animate-spin border-2 border-green-600 border-t-transparent rounded-full"></div>
-                Generating...
-              </>
-            ) : (
-              <>
-                <Download className="w-5 h-5 mr-2" />
-                Download Summary
-              </>
-            )}
-          </button>
-        </div>
+        {/* Summary Cards */}
+        <SummaryCards data={data} isSubmitted={!!submissionResult} />
 
-        {/* Main Action Button */}
-        {!submissionResult ? (
-          <Button 
-            variant="primary" 
-            size="lg" 
-            onClick={submitRegistration}
-            disabled={isSubmitting}
-            icon={isSubmitting ? <Loader className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
-            className="transform hover:scale-105 transition-transform"
-          >
-            {isSubmitting ? 'Creating Account...' : 'Complete Registration'}
-          </Button>
-        ) : (
-          <Button 
-            variant="primary" 
-            size="lg" 
-            onClick={handleGoToDashboard}
-            icon={<Rocket className="w-5 h-5" />}
-            className="transform hover:scale-105 transition-transform"
-          >
-            Go to Dashboard
-          </Button>
+        {/* Action Buttons */}
+        <ActionButtons 
+          data={data}
+          showDetails={showDetails}
+          setShowDetails={setShowDetails}
+          isDownloading={isDownloading}
+          generatePDF={generatePDF}
+          isSubmitting={isSubmitting}
+          submitRegistration={submitRegistration}
+          submissionResult={submissionResult}
+          submissionError={submissionError}
+          handleGoToDashboard={handleGoToDashboard}
+        />
+
+        {/* Detailed Summary */}
+        {showDetails && (
+          <DetailedSummary 
+            data={data} 
+            onClose={() => setShowDetails(false)} 
+          />
         )}
 
-        {/* Error Display */}
-        {submissionError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md mx-auto">
-            <div className="flex items-center space-x-2 text-red-600">
-              <X className="w-5 h-5" />
-              <span className="font-medium">Registration Failed</span>
-            </div>
-            <p className="text-red-700 text-sm mt-1">{submissionError}</p>
-            <button
-              onClick={submitRegistration}
-              disabled={isSubmitting}
-              className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-            >
-              Try Again
-            </button>
-          </div>
+        {/* Confirmation Modal */}
+        {showConfirmModal && (
+          <ConfirmationModal 
+            submissionResult={submissionResult}
+            isSubmitting={isSubmitting}
+            onCancel={() => setShowConfirmModal(false)}
+            onConfirm={confirmGoToDashboard}
+          />
         )}
 
-        {/* Success Display */}
-        {submissionResult && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-w-md mx-auto">
-            <div className="flex items-center space-x-2 text-green-600">
-              <CheckCircle className="w-5 h-5" />
-              <span className="font-medium">Registration Successful!</span>
-            </div>
-            <p className="text-green-700 text-sm mt-1">
-              Company created with {submissionResult.data?.userCount} users and {submissionResult.data?.branchCount} branches.
-              {submissionResult.data?.autoLogin && ' You are automatically logged in!'}
-            </p>
-          </div>
-        )}
-
-        <Button 
-          variant="outline" 
-          size="lg" 
-          href="/help" 
-          icon={<HelpCircle className="w-5 h-5" />}
-        >
-          Need Help Getting Started?
-        </Button>
-      </div>
-
-      {/* Detailed Information Panel */}
-      {showDetails && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 mt-8 text-left max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h4 className="text-xl font-bold text-gray-900 flex items-center">
-              <FileText className="w-6 h-6 mr-2" />
-              Registration Summary
-            </h4>
-            <button
-              onClick={() => setShowDetails(false)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
-
-          <div className="space-y-8">
-            {/* Company Information */}
-            <div className="border-l-4 border-blue-500 pl-4">
-              <h5 className="text-lg font-semibold text-blue-900 mb-4 flex items-center">
-                <Building2 className="w-5 h-5 mr-2" />
-                Company Information
-              </h5>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium text-gray-700">Company Name:</span>
-                  <span className="ml-2 text-gray-900">{data.company?.name || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Registration Number:</span>
-                  <span className="ml-2 text-gray-900">{data.company?.registrationNumber || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">GST Number:</span>
-                  <span className="ml-2 text-gray-900">{data.company?.gstNumber || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">PAN Number:</span>
-                  <span className="ml-2 text-gray-900">{data.company?.panNumber || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Email:</span>
-                  <span className="ml-2 text-gray-900">{data.company?.email || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Phone:</span>
-                  <span className="ml-2 text-gray-900">{data.company?.phone || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Website:</span>
-                  <span className="ml-2 text-gray-900">{data.company?.website || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Industry:</span>
-                  <span className="ml-2 text-gray-900">{data.industry || 'N/A'}</span>
-                </div>
-                <div className="md:col-span-2">
-                  <span className="font-medium text-gray-700">Address:</span>
-                  <span className="ml-2 text-gray-900">
-                    {data.company?.address || 'N/A'}, {data.company?.city || 'N/A'}, {data.company?.state || 'N/A'} - {data.company?.pincode || 'N/A'}
-                  </span>
-                </div>
-                {data.company?.description && (
-                  <div className="md:col-span-2">
-                    <span className="font-medium text-gray-700">Description:</span>
-                    <span className="ml-2 text-gray-900">{data.company.description}</span>
-                  </div>
-                )}
-                {data.company?.logo && (
-                  <div className="md:col-span-2">
-                    <span className="font-medium text-gray-700 flex items-center">
-                      <Camera className="w-4 h-4 mr-1" />
-                      Logo: 
-                    </span>
-                    <span className="ml-2 text-green-600">✓ Uploaded ({data.company?.logoFileName || 'company-logo.jpg'})</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Admin Details */}
-            <div className="border-l-4 border-purple-500 pl-4">
-              <h5 className="text-lg font-semibold text-purple-900 mb-4 flex items-center">
-                <User className="w-5 h-5 mr-2" />
-                Admin Account Details
-              </h5>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium text-gray-700">Full Name:</span>
-                  <span className="ml-2 text-gray-900">
-                    {data.owner?.firstName} {data.owner?.middleName} {data.owner?.lastName}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Username:</span>
-                  <span className="ml-2 text-gray-900">{data.owner?.username || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Email:</span>
-                  <span className="ml-2 text-gray-900 flex items-center">
-                    {data.owner?.email || 'N/A'}
-                    {data.owner?.emailVerified && <CheckCircle className="w-4 h-4 ml-1 text-green-500" />}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Phone:</span>
-                  <span className="ml-2 text-gray-900 flex items-center">
-                    {data.owner?.phone || 'N/A'}
-                    {data.owner?.phoneVerified && <CheckCircle className="w-4 h-4 ml-1 text-green-500" />}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Date of Birth:</span>
-                  <span className="ml-2 text-gray-900">{formatDate(data.owner?.dateOfBirth)}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Gender:</span>
-                  <span className="ml-2 text-gray-900">{data.owner?.gender || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Designation:</span>
-                  <span className="ml-2 text-gray-900">{data.owner?.designation || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Department:</span>
-                  <span className="ml-2 text-gray-900">{data.owner?.department || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Aadhaar:</span>
-                  <span className="ml-2 text-gray-900">{maskSensitiveData(data.owner?.aadhaarNumber)}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">PAN:</span>
-                  <span className="ml-2 text-gray-900">{data.owner?.panNumber || 'N/A'}</span>
-                </div>
-                <div className="md:col-span-2">
-                  <span className="font-medium text-gray-700">Address:</span>
-                  <span className="ml-2 text-gray-900">
-                    {data.owner?.address || 'N/A'}, {data.owner?.city || 'N/A'}, {data.owner?.state || 'N/A'} - {data.owner?.pincode || 'N/A'}
-                  </span>
-                </div>
-                {data.owner?.emergencyContactName && (
-                  <div className="md:col-span-2">
-                    <span className="font-medium text-gray-700">Emergency Contact:</span>
-                    <span className="ml-2 text-gray-900">
-                      {data.owner.emergencyContactName} - {data.owner?.emergencyContactPhone || 'N/A'}
-                    </span>
-                  </div>
-                )}
-                {data.owner?.photo && (
-                  <div className="md:col-span-2">
-                    <span className="font-medium text-gray-700 flex items-center">
-                      <Camera className="w-4 h-4 mr-1" />
-                      Profile Photo: 
-                    </span>
-                    <span className="ml-2 text-green-600">✓ Uploaded ({data.owner?.photoFileName || 'profile-photo.jpg'})</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Branches */}
-            {data.branches && data.branches.length > 0 && (
-              <div className="border-l-4 border-green-500 pl-4">
-                <h5 className="text-lg font-semibold text-green-900 mb-4 flex items-center">
-                  <MapPin className="w-5 h-5 mr-2" />
-                  Branches ({data.branches.length})
-                </h5>
-                <div className="space-y-4">
-                  {data.branches.map((branch, index) => (
-                    <div key={index} className="bg-green-50 rounded-lg p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                        <div>
-                          <span className="font-medium text-gray-700">Branch Name:</span>
-                          <span className="ml-2 text-gray-900">{branch.name}</span>
-                          {branch.is_head_office && (
-                            <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Head Office</span>
-                          )}
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-700">Branch Code:</span>
-                          <span className="ml-2 text-gray-900">{branch.code}</span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-700">Phone:</span>
-                          <span className="ml-2 text-gray-900">{branch.phone || 'N/A'}</span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-700">Email:</span>
-                          <span className="ml-2 text-gray-900">{branch.email || 'N/A'}</span>
-                        </div>
-                        <div className="md:col-span-2">
-                          <span className="font-medium text-gray-700">Address:</span>
-                          <span className="ml-2 text-gray-900">
-                            {branch.address}, {branch.city}, {branch.state} - {branch.pincode}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Staff */}
-            {data.staff && data.staff.length > 0 && (
-              <div className="border-l-4 border-orange-500 pl-4">
-                <h5 className="text-lg font-semibold text-orange-900 mb-4 flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Staff Members ({data.staff.length})
-                </h5>
-                <div className="space-y-4">
-                  {data.staff.map((member, index) => (
-                    <div key={index} className="bg-orange-50 rounded-lg p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                        <div>
-                          <span className="font-medium text-gray-700">Name:</span>
-                          <span className="ml-2 text-gray-900">{member.first_name} {member.last_name}</span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-700">Role:</span>
-                          <span className="ml-2 text-gray-900">{member.role}</span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-700">Email:</span>
-                          <span className="ml-2 text-gray-900">{member.email}</span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-700">Phone:</span>
-                          <span className="ml-2 text-gray-900">{member.phone}</span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-700">Department:</span>
-                          <span className="ml-2 text-gray-900">{member.department}</span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-700">Designation:</span>
-                          <span className="ml-2 text-gray-900">{member.designation}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Preferences */}
-            <div className="border-l-4 border-gray-500 pl-4">
-              <h5 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Globe className="w-5 h-5 mr-2" />
-                Preferences
-              </h5>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium text-gray-700">Language:</span>
-                  <span className="ml-2 text-gray-900">{data.language === 'en' ? 'English' : data.language}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Theme:</span>
-                  <span className="ml-2 text-gray-900 capitalize">{data.theme}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Registration Footer */}
+        <div className="mt-16 pt-8 border-t border-gray-200">
+          <p className="text-center text-gray-500 text-sm">
+            Registration prepared on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+          </p>
         </div>
-      )}
-
-      {/* Enhanced Confirmation Modal */}
-      {showConfirmModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Rocket className="w-8 h-8 text-blue-600" />
-            </div>
-            
-            <h3 className="text-xl font-bold text-gray-900 mb-3">Ready to Launch?</h3>
-            <p className="text-gray-600 mb-6">
-              {!submissionResult 
-                ? "This will finalize your registration and create your company account in our system."
-                : "You're about to enter your MOVESURE dashboard. Your registration data will be cleared from this device for security."
-              }
-            </p>
-            
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowConfirmModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmGoToDashboard}
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center"
-              >
-                {isSubmitting ? (
-                  <Loader className="w-4 h-4 animate-spin" />
-                ) : (
-                  submissionResult ? 'Go to Dashboard' : 'Complete & Launch'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Registration Date Footer */}
-      <div className="mt-8 pt-6 border-t border-gray-200">
-        <p className="text-sm text-gray-500">
-          Registration prepared on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
-        </p>
       </div>
     </div>
   );
