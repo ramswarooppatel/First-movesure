@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import InputField from '@/components/common/InputField';
 import Button from '@/components/common/Button';
 import AddressComponent from '@/components/common/AddressComponent';
+import PhotoUpload from '@/components/common/PhotoUpload';
 import { 
   Building2, 
   FileText, 
@@ -12,7 +13,8 @@ import {
   AlertCircle,
   Shield,
   Loader,
-  X
+  X,
+  Image as ImageIcon
 } from 'lucide-react';
 
 export default function CompanyDetails({ data, updateData, onLoadingChange }) {
@@ -49,6 +51,23 @@ export default function CompanyDetails({ data, updateData, onLoadingChange }) {
         ...prev,
         [field]: null
       }));
+    }
+  };
+
+  // Handle company logo change from PhotoUpload component
+  const handleLogoChange = (logoData) => {
+    if (logoData) {
+      // Store the complete logo data
+      handleChange('logo', logoData.photo);
+      handleChange('logoFileName', logoData.fileName);
+      handleChange('logoFileSize', logoData.fileSize);
+      handleChange('logoUploadedAt', logoData.uploadedAt);
+    } else {
+      // Remove logo
+      handleChange('logo', '');
+      handleChange('logoFileName', '');
+      handleChange('logoFileSize', '');
+      handleChange('logoUploadedAt', '');
     }
   };
 
@@ -647,6 +666,25 @@ const citiesByState = {
     <div className="space-y-8">
       {/* Verification Modal */}
       {showVerificationModal && <VerificationModal />}
+
+      {/* Company Logo Upload */}
+      <PhotoUpload
+        value={company.logo || ''} // Pass the base64 logo directly
+        onChange={handleLogoChange}
+        onLoadingChange={onLoadingChange}
+        label="Company Logo"
+        placeholder="Add Logo"
+        maxSize={5}
+        outputSize={128}
+        previewSize={128}
+        required={false}
+        backgroundColor="bg-gradient-to-r from-orange-50 to-yellow-50"
+        borderColor="border-orange-200"
+        iconColor="bg-orange-500"
+        buttonColor="bg-orange-600 hover:bg-orange-700"
+        autoGenerateFilename={true}
+        allowedTypes={['image/jpeg', 'image/png', 'image/svg+xml', 'image/gif']}
+      />
 
       {/* Basic Company Information */}
       <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200">

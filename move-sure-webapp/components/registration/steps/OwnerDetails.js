@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import InputField from '@/components/common/InputField';
 import Button from '@/components/common/Button';
 import AddressComponent from '@/components/common/AddressComponent';
@@ -7,6 +7,7 @@ import PANComponent from '@/components/common/PANComponent';
 import AadhaarComponent from '@/components/common/AadhaarComponent';
 import PhoneVerificationComponent from '@/components/common/PhoneVerificationComponent';
 import EmailVerificationComponent from '@/components/common/EmailVerificationComponent';
+import PhotoUpload from '@/components/common/PhotoUpload';
 import { 
   User, 
   Phone, 
@@ -71,20 +72,33 @@ export default function OwnerDetails({ data, updateData, onLoadingChange }) {
     }
   };
 
+  // Handle photo change from PhotoUpload component
+  const handlePhotoChange = (photoData) => {
+    if (photoData) {
+      // Store the complete photo data
+      handleChange('photo', photoData.photo);
+      handleChange('photoFileName', photoData.fileName);
+      handleChange('photoFileSize', photoData.fileSize);
+      handleChange('photoUploadedAt', photoData.uploadedAt);
+    } else {
+      // Remove photo
+      handleChange('photo', '');
+      handleChange('photoFileName', '');
+      handleChange('photoFileSize', '');
+      handleChange('photoUploadedAt', '');
+    }
+  };
+
+  // Address component handler
   const handleAddressChange = (addressData) => {
     const updatedOwner = { ...owner, ...addressData };
     setOwner(updatedOwner);
     updateData('owner', updatedOwner);
   };
 
+  // PAN component handlers
   const handlePANChange = (panNumber) => {
     const updatedOwner = { ...owner, panNumber };
-    setOwner(updatedOwner);
-    updateData('owner', updatedOwner);
-  };
-
-  const handleAadhaarChange = (aadhaarNumber) => {
-    const updatedOwner = { ...owner, aadhaarNumber };
     setOwner(updatedOwner);
     updateData('owner', updatedOwner);
   };
@@ -102,6 +116,14 @@ export default function OwnerDetails({ data, updateData, onLoadingChange }) {
         }
       }
     }
+    updatedOwner.panVerified = true;
+    setOwner(updatedOwner);
+    updateData('owner', updatedOwner);
+  };
+
+  // Aadhaar component handlers
+  const handleAadhaarChange = (aadhaarNumber) => {
+    const updatedOwner = { ...owner, aadhaarNumber };
     setOwner(updatedOwner);
     updateData('owner', updatedOwner);
   };
@@ -110,18 +132,19 @@ export default function OwnerDetails({ data, updateData, onLoadingChange }) {
     const updatedOwner = { ...owner, aadhaarVerified: true };
     if (aadhaarData.holderName && !owner.holderName) {
       updatedOwner.holderName = aadhaarData.holderName;
-      // You can also extract name parts if needed
     }
     setOwner(updatedOwner);
     updateData('owner', updatedOwner);
   };
 
+  // Phone verification handlers
   const handlePhoneVerificationSuccess = (phoneData) => {
     const updatedOwner = { ...owner, phoneVerified: true };
     setOwner(updatedOwner);
     updateData('owner', updatedOwner);
   };
 
+  // Email verification handlers
   const handleEmailVerificationSuccess = (emailData) => {
     const updatedOwner = { ...owner, emailVerified: true };
     setOwner(updatedOwner);
@@ -130,6 +153,25 @@ export default function OwnerDetails({ data, updateData, onLoadingChange }) {
 
   return (
     <div className="space-y-8">
+      {/* Photo Upload Component */}
+      <PhotoUpload
+        value={owner.photo || ''} // Pass the base64 photo directly
+        onChange={handlePhotoChange}
+        onLoadingChange={onLoadingChange}
+        label="Profile Photo"
+        placeholder="Add Photo"
+        maxSize={10}
+        outputSize={400}
+        previewSize={128}
+        required={false}
+        backgroundColor="bg-gradient-to-r from-purple-50 to-pink-50"
+        borderColor="border-purple-200"
+        iconColor="bg-purple-500"
+        buttonColor="bg-purple-600 hover:bg-purple-700"
+        showCropModal={true}
+        autoGenerateFilename={true}
+      />
+      
       {/* Personal Information */}
       <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200">
         <h3 className="text-lg font-semibold text-black mb-4 flex items-center">
