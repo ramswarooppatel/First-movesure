@@ -147,3 +147,12 @@ CREATE INDEX idx_login_audit_user_id ON login_audit(user_id);
 CREATE INDEX idx_login_audit_login_time ON login_audit(login_time);
 CREATE INDEX idx_user_sessions_user_id ON user_sessions(user_id);
 CREATE INDEX idx_user_sessions_token ON user_sessions(session_token);
+
+-- 4. User Modules Table (for access control)
+CREATE TABLE user_modules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    module_name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, module_name)
+);
