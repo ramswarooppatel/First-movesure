@@ -33,6 +33,7 @@ export default function RegistrationComplete({ data, updateData }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionResult, setSubmissionResult] = useState(null);
   const [submissionError, setSubmissionError] = useState(null);
+  const [authData, setAuthData] = useState(null)
 
   // Generate PDF content
   const generatePDF = async () => {
@@ -146,39 +147,66 @@ export default function RegistrationComplete({ data, updateData }) {
 
   // Submit registration to Supabase
   const submitRegistration = async () => {
-    setIsSubmitting(true);
-    setSubmissionError(null);
+    setIsSubmitting(true)
+    setSubmissionError(null)
 
     try {
+      console.log('Submitting registration data:', data)
+      
       const response = await fetch('/api/register/complete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Device-ID': `web-${Date.now()}`,
+          'X-Device-Name': 'Web Browser'
         },
         body: JSON.stringify(data)
-      });
+      })
 
-      const result = await response.json();
+      console.log('Response status:', response.status)
+      console.log('Response headers:', response.headers)
 
-      if (!response.ok) {
-        throw new Error(result.message || 'Registration failed');
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const textResponse = await response.text()
+        console.error('Non-JSON response:', textResponse)
+        throw new Error('Server returned invalid response format. Please check server logs.')
       }
 
-      setSubmissionResult(result);
-      
-      // Clear localStorage after successful submission
-      localStorage.removeItem('movesure_registration_current_step');
-      localStorage.removeItem('movesure_registration_form_data');
-      localStorage.removeItem('movesure_registration_last_saved');
+      const result = await response.json()
+      console.log('API Response:', result)
 
-      return result;
+      if (!response.ok) {
+        throw new Error(result.error || `Registration failed with status ${response.status}`)
+      }
 
+      if (result.success) {
+        setSubmissionResult(result)
+        
+        // Store auth data if auto-login successful
+        if (result.auth) {
+          setAuthData(result.auth)
+          
+          // Store tokens in localStorage/sessionStorage
+          localStorage.setItem('movesure_token', result.auth.token)
+          localStorage.setItem('movesure_refresh_token', result.auth.refreshToken)
+          localStorage.setItem('movesure_session', result.auth.sessionToken)
+          localStorage.setItem('movesure_user', JSON.stringify(result.auth.user))
+          
+          // Clear registration data
+          localStorage.removeItem('movesure_registration_form_data')
+          localStorage.removeItem('movesure_registration_current_step')
+          localStorage.removeItem('movesure_registration_last_saved')
+        }
+        
+        console.log('Registration completed successfully:', result)
+      }
     } catch (error) {
-      console.error('Registration submission error:', error);
-      setSubmissionError(error.message);
-      throw error;
+      console.error('Registration submission error:', error)
+      setSubmissionError(error.message)
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
   };
 
@@ -216,7 +244,7 @@ export default function RegistrationComplete({ data, updateData }) {
   };
 
   return (
-    <div className="text-center py-8">
+    <div className="space-y-8">
       {/* Success Header */}
       <div className="w-24 h-24 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
         <PartyPopper className="w-12 h-12 text-white" />
