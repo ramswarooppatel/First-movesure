@@ -25,16 +25,14 @@ export default async function handler(req, res) {
     const result = await AuthService.login(identifier, password, deviceInfo);
 
     if (result.success) {
-      // Set cookies
-      res.setHeader('Set-Cookie', [
-        `accessToken=${result.tokens.accessToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${24 * 60 * 60}`,
-        `sessionToken=${result.tokens.sessionToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${30 * 24 * 60 * 60}`,
-        `refreshToken=${result.tokens.refreshToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${30 * 24 * 60 * 60}`
-      ]);
-
+      // Return tokens in response body instead of setting cookies
       res.status(200).json({
         success: true,
         user: result.user,
+        token: result.tokens.accessToken,
+        accessToken: result.tokens.accessToken,
+        refreshToken: result.tokens.refreshToken,
+        sessionToken: result.tokens.sessionToken,
         message: 'Login successful'
       });
     } else {
@@ -51,8 +49,12 @@ export default async function handler(req, res) {
 
 // Helper functions
 function getDeviceType(userAgent) {
-  if (/mobile|android|iphone/i.test(userAgent)) return 'mobile';
-  if (/tablet|ipad/i.test(userAgent)) return 'tablet';
+  if (/tablet|ipad|playbook|silk/i.test(userAgent)) {
+    return 'tablet';
+  }
+  if (/mobile|iphone|ipod|android|blackberry|opera|mini|windows\sce|palm|smartphone|iemobile/i.test(userAgent)) {
+    return 'mobile';
+  }
   return 'desktop';
 }
 

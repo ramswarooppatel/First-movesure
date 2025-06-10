@@ -1,11 +1,14 @@
 "use client";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import { Eye, EyeOff, Phone, User, Lock, Loader, AlertCircle } from 'lucide-react';
 import Button from '@/components/common/Button';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login, loading: authLoading } = useAuth();
+  
   const [formData, setFormData] = useState({
     identifier: '',
     password: ''
@@ -13,7 +16,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [loginType, setLoginType] = useState('username'); // 'username' or 'phone'
+  const [loginType, setLoginType] = useState('username');
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -37,20 +40,9 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const result = await response.json();
+      const result = await login(formData.identifier, formData.password);
 
       if (result.success) {
-        // Store user data in localStorage
-        localStorage.setItem('movesure_user', JSON.stringify(result.user));
-        
         // Redirect to dashboard
         router.push('/dashboard');
       } else {
@@ -63,6 +55,8 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  const loading = isLoading || authLoading;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
@@ -99,7 +93,7 @@ export default function LoginPage() {
                   }}
                   placeholder="Enter username or phone number"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                  disabled={isLoading}
+                  disabled={loading}
                 />
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                   {loginType === 'phone' ? (
@@ -130,13 +124,13 @@ export default function LoginPage() {
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   placeholder="Enter your password"
                   className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                  disabled={isLoading}
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  disabled={isLoading}
+                  disabled={loading}
                 >
                   {showPassword ? (
                     <EyeOff className="w-5 h-5" />
@@ -160,10 +154,10 @@ export default function LoginPage() {
             {/* Login Button */}
             <Button
               type="submit"
-              disabled={isLoading || !formData.identifier || !formData.password}
+              disabled={loading || !formData.identifier || !formData.password}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center"
             >
-              {isLoading ? (
+              {loading ? (
                 <>
                   <Loader className="w-5 h-5 mr-2 animate-spin" />
                   Signing In...
