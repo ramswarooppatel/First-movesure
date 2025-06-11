@@ -1,63 +1,91 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   X, 
   User, 
   Phone, 
   Mail, 
-  Briefcase, 
   MapPin, 
-  Shield, 
   Calendar,
+  Briefcase,
+  Shield,
   Building2,
   Crown,
+  CheckCircle,
+  AlertCircle,
+  Edit,
+  Trash2,
+  Copy,
+  Camera,
+  Globe,
   UserCheck,
   UserX,
-  Edit,
-  Copy,
-  CheckCircle,
-  AlertCircle
+  Clock,
+  CreditCard,
+  FileText,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import Button from '@/components/common/Button';
 
-export default function StaffViewModal({ staff, branches, onClose, onEdit }) {
+export default function StaffViewModal({ isOpen, onClose, staff, branches = [], onEdit, onDelete }) {
   const [copySuccess, setCopySuccess] = useState('');
+  const [showSensitiveData, setShowSensitiveData] = useState(false);
 
-  const getRoleIcon = (role) => {
-    switch (role) {
-      case 'super_admin':
-        return <Crown className="w-4 h-4 text-purple-600" />;
-      case 'admin':
-        return <Shield className="w-4 h-4 text-blue-600" />;
-      case 'branch_manager':
-        return <UserCheck className="w-4 h-4 text-green-600" />;
-      default:
-        return <User className="w-4 h-4 text-gray-600" />;
-    }
-  };
+  if (!isOpen || !staff) return null;
 
-  const getRoleBadge = (role) => {
-    const roleConfig = {
-      super_admin: { label: 'Super Admin', color: 'bg-purple-100 text-purple-800 border-purple-200' },
-      admin: { label: 'Admin', color: 'bg-blue-100 text-blue-800 border-blue-200' },
-      branch_manager: { label: 'Manager', color: 'bg-green-100 text-green-800 border-green-200' },
-      branch_staff: { label: 'Staff', color: 'bg-gray-100 text-gray-800 border-gray-200' },
-      viewer: { label: 'Viewer', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' }
+  const getRoleInfo = (role) => {
+    const roles = {
+      'super_admin': { label: 'OWNER', color: 'purple', icon: Crown, bgColor: 'bg-purple-500' },
+      'admin': { label: 'Admin', color: 'blue', icon: Shield, bgColor: 'bg-blue-500' },
+      'branch_manager': { label: 'Branch Manager', color: 'green', icon: Briefcase, bgColor: 'bg-green-500' },
+      'branch_staff': { label: 'Branch Staff', color: 'yellow', icon: User, bgColor: 'bg-yellow-500' },
+      'viewer': { label: 'Viewer', color: 'gray', icon: User, bgColor: 'bg-gray-500' }
     };
-
-    const config = roleConfig[role] || roleConfig.branch_staff;
-    return (
-      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${config.color}`}>
-        {getRoleIcon(role)}
-        <span className="ml-1">{config.label}</span>
-      </span>
-    );
+    return roles[role] || { label: role, color: 'gray', icon: User, bgColor: 'bg-gray-500' };
   };
 
-  const getBranchName = (branchId) => {
-    const branch = branches.find(b => b.id === branchId);
-    return branch ? `${branch.name}${branch.is_head_office ? ' (Head Office)' : ''}` : 'Not Assigned';
+  // Enhanced branch information retrieval
+  const getBranchInfo = () => {
+    // First, try to find branch from the branches array using branch_id
+    if (staff.branch_id && branches.length > 0) {
+      const branch = branches.find(b => b.id === staff.branch_id);
+      if (branch) {
+        return {
+          id: branch.id,
+          name: branch.name,
+          code: branch.code,
+          city: branch.city,
+          state: branch.state,
+          is_head_office: branch.is_head_office,
+          address: branch.address,
+          phone: branch.phone,
+          email: branch.email
+        };
+      }
+    }
+
+    // Fallback to staff object properties (if joined data exists)
+    if (staff.branch_name || staff.branches?.name) {
+      return {
+        id: staff.branch_id,
+        name: staff.branch_name || staff.branches?.name,
+        code: staff.branch_code || staff.branches?.code,
+        city: staff.branch_city || staff.branches?.city,
+        state: staff.branch_state || staff.branches?.state,
+        is_head_office: staff.branch_is_head_office || staff.branches?.is_head_office,
+        address: staff.branch_address || staff.branches?.address,
+        phone: staff.branch_phone || staff.branches?.phone,
+        email: staff.branch_email || staff.branches?.email
+      };
+    }
+
+    return null;
   };
+
+  const branchInfo = getBranchInfo();
+  const roleInfo = getRoleInfo(staff.role);
+  const RoleIcon = roleInfo.icon;
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Not provided';
@@ -68,6 +96,17 @@ export default function StaffViewModal({ staff, branches, onClose, onEdit }) {
     });
   };
 
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'Not provided';
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const copyToClipboard = (text, label) => {
     navigator.clipboard.writeText(text).then(() => {
       setCopySuccess(`${label} copied!`);
@@ -75,15 +114,20 @@ export default function StaffViewModal({ staff, branches, onClose, onEdit }) {
     });
   };
 
-  const InfoRow = ({ icon: Icon, label, value, copyable = false }) => (
+  const InfoRow = ({ icon: Icon, label, value, copyable = false, sensitive = false }) => (
     <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
       <div className="flex items-center space-x-3">
         <Icon className="w-5 h-5 text-gray-400" />
         <span className="text-sm font-medium text-gray-600">{label}</span>
       </div>
       <div className="flex items-center space-x-2">
-        <span className="text-sm text-gray-900">{value || 'Not provided'}</span>
-        {copyable && value && (
+        <span className="text-sm text-gray-900">
+          {sensitive && !showSensitiveData 
+            ? '••••••••' 
+            : (value || 'Not provided')
+          }
+        </span>
+        {copyable && value && (showSensitiveData || !sensitive) && (
           <button
             onClick={() => copyToClipboard(value, label)}
             className="p-1 text-gray-400 hover:text-gray-600 rounded"
@@ -97,74 +141,126 @@ export default function StaffViewModal({ staff, branches, onClose, onEdit }) {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
+    <div 
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)'
+      }}
+      onClick={onClose}
+    >
       <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-all duration-300"
-        onClick={onClose}
-      />
-      
-      {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transform transition-all duration-300">
+        className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden relative"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Copy Success Notification */}
         {copySuccess && (
-          <div className="absolute top-4 right-4 z-10 bg-green-500 text-white px-3 py-1 rounded-lg text-sm shadow-lg">
+          <div className="absolute top-4 right-4 z-10 bg-green-500 text-white px-4 py-2 rounded-lg text-sm shadow-lg">
             {copySuccess}
           </div>
         )}
 
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-xl">
-                {(staff.first_name?.[0] || '').toUpperCase()}
-                {(staff.last_name?.[0] || '').toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                {staff.first_name} {staff.last_name}
-              </h2>
-              <p className="text-gray-600">@{staff.username}</p>
-              <div className="mt-2">{getRoleBadge(staff.role)}</div>
-            </div>
+        {/* Header with Gradient Background */}
+        <div className={`${roleInfo.bgColor} text-white p-8 relative overflow-hidden`}>
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -mr-16 -mt-16"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white rounded-full -ml-12 -mb-12"></div>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${
-              staff.is_active 
-                ? 'bg-green-100 text-green-800 border-green-200' 
-                : 'bg-red-100 text-red-800 border-red-200'
-            }`}>
-              {staff.is_active ? (
-                <UserCheck className="w-3 h-3 mr-1" />
-              ) : (
-                <UserX className="w-3 h-3 mr-1" />
-              )}
-              {staff.is_active ? 'Active' : 'Inactive'}
-            </span>
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center space-x-6">
+              {/* Profile Picture or Initials */}
+              <div className="w-24 h-24 bg-white/20 rounded-2xl flex items-center justify-center text-white font-bold text-2xl backdrop-blur-sm">
+                {staff.profile_picture_url ? (
+                  <img 
+                    src={staff.profile_picture_url} 
+                    alt={`${staff.first_name} ${staff.last_name}`}
+                    className="w-full h-full object-cover rounded-2xl"
+                  />
+                ) : (
+                  <span>
+                    {(staff.first_name?.[0] || '').toUpperCase()}
+                    {(staff.last_name?.[0] || '').toUpperCase()}
+                  </span>
+                )}
+              </div>
+              
+              <div>
+                <h2 className="text-3xl font-bold text-white mb-2">
+                  {staff.first_name} {staff.middle_name} {staff.last_name}
+                </h2>
+                <div className="flex items-center space-x-4 mb-3">
+                  <span className="px-4 py-2 bg-white/20 text-white rounded-full font-medium backdrop-blur-sm flex items-center space-x-2">
+                    <RoleIcon className="w-4 h-4" />
+                    <span>{roleInfo.label}</span>
+                  </span>
+                  {staff.designation && (
+                    <span className="px-3 py-1 bg-white/15 text-white text-sm rounded-full backdrop-blur-sm">
+                      {staff.designation}
+                    </span>
+                  )}
+                  <span className={`px-3 py-1 text-sm rounded-full font-medium backdrop-blur-sm ${
+                    staff.is_active 
+                      ? 'bg-green-400/20 text-green-100' 
+                      : 'bg-red-400/20 text-red-100'
+                  }`}>
+                    {staff.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <p className="text-white/80 text-lg">{staff.email}</p>
+                {staff.username && (
+                  <p className="text-white/70">@{staff.username}</p>
+                )}
+              </div>
+            </div>
             
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="w-6 h-6 text-gray-500" />
-            </button>
+            <div className="flex items-center space-x-3">
+              {/* Sensitive Data Toggle */}
+              <button 
+                onClick={() => setShowSensitiveData(!showSensitiveData)}
+                className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm"
+                title={showSensitiveData ? 'Hide sensitive data' : 'Show sensitive data'}
+              >
+                {showSensitiveData ? (
+                  <EyeOff className="w-5 h-5 text-white" />
+                ) : (
+                  <Eye className="w-5 h-5 text-white" />
+                )}
+              </button>
+              
+              {onEdit && (
+                <button 
+                  onClick={onEdit}
+                  className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm"
+                  title="Edit Staff"
+                >
+                  <Edit className="w-5 h-5 text-white" />
+                </button>
+              )}
+              
+              <button 
+                onClick={onClose}
+                className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-200px)] p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Personal Information */}
+        <div className="p-8 overflow-y-auto max-h-[70vh]">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column - Personal Information */}
             <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <User className="w-5 h-5 mr-2" />
+              {/* Personal Details */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                  <User className="w-6 h-6 mr-3 text-blue-600" />
                   Personal Information
                 </h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-1">
+                <div className="space-y-1">
                   <InfoRow 
                     icon={User} 
                     label="Full Name" 
@@ -189,12 +285,40 @@ export default function StaffViewModal({ staff, branches, onClose, onEdit }) {
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Phone className="w-5 h-5 mr-2" />
+              {/* Identity Documents */}
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                  <Shield className="w-6 h-6 mr-3 text-purple-600" />
+                  Identity Documents
+                </h3>
+                <div className="space-y-1">
+                  <InfoRow 
+                    icon={Shield} 
+                    label="Aadhaar Number" 
+                    value={staff.aadhar_number}
+                    sensitive={true}
+                    copyable 
+                  />
+                  <InfoRow 
+                    icon={Shield} 
+                    label="PAN Number" 
+                    value={staff.pan_number}
+                    sensitive={true}
+                    copyable 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Middle Column - Contact & Address */}
+            <div className="space-y-6">
+              {/* Contact Information */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                  <Phone className="w-6 h-6 mr-3 text-green-600" />
                   Contact Information
                 </h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-1">
+                <div className="space-y-1">
                   <InfoRow 
                     icon={Phone} 
                     label="Phone Number" 
@@ -208,87 +332,28 @@ export default function StaffViewModal({ staff, branches, onClose, onEdit }) {
                     copyable 
                   />
                   <InfoRow 
-                    icon={User} 
-                    label="Emergency Contact" 
-                    value={staff.emergency_contact_name} 
+                    icon={CheckCircle} 
+                    label="Phone Verified" 
+                    value={staff.phone_verified ? 'Yes' : 'No'} 
                   />
                   <InfoRow 
-                    icon={Phone} 
-                    label="Emergency Phone" 
-                    value={staff.emergency_contact_phone}
-                    copyable 
+                    icon={CheckCircle} 
+                    label="Email Verified" 
+                    value={staff.email_verified ? 'Yes' : 'No'} 
                   />
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Shield className="w-5 h-5 mr-2" />
-                  Identity Documents
-                </h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-1">
-                  <InfoRow 
-                    icon={Shield} 
-                    label="Aadhaar Number" 
-                    value={staff.aadhar_number ? `****-****-${staff.aadhar_number.slice(-4)}` : 'Not provided'} 
-                  />
-                  <InfoRow 
-                    icon={Shield} 
-                    label="PAN Number" 
-                    value={staff.pan_number}
-                    copyable 
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Professional Information */}
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Briefcase className="w-5 h-5 mr-2" />
-                  Professional Information
-                </h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-1">
-                  <InfoRow 
-                    icon={Briefcase} 
-                    label="Designation" 
-                    value={staff.designation} 
-                  />
-                  <InfoRow 
-                    icon={Building2} 
-                    label="Department" 
-                    value={staff.department} 
-                  />
-                  <InfoRow 
-                    icon={Building2} 
-                    label="Branch" 
-                    value={getBranchName(staff.branch_id)} 
-                  />
-                  <InfoRow 
-                    icon={Calendar} 
-                    label="Joining Date" 
-                    value={formatDate(staff.joining_date)} 
-                  />
-                  {staff.salary && (
-                    <InfoRow 
-                      icon={User} 
-                      label="Salary" 
-                      value={`₹${parseInt(staff.salary).toLocaleString()}`} 
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <MapPin className="w-5 h-5 mr-2" />
+              {/* Address Information */}
+              <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl p-6 border border-orange-100">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                  <MapPin className="w-6 h-6 mr-3 text-orange-600" />
                   Address Information
                 </h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-1">
+                <div className="space-y-1">
                   <InfoRow 
                     icon={MapPin} 
-                    label="Address" 
+                    label="Street Address" 
                     value={staff.address} 
                   />
                   <InfoRow 
@@ -307,33 +372,177 @@ export default function StaffViewModal({ staff, branches, onClose, onEdit }) {
                     value={staff.pincode} 
                   />
                   <InfoRow 
-                    icon={MapPin} 
+                    icon={Globe} 
                     label="Country" 
                     value={staff.country} 
                   />
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Calendar className="w-5 h-5 mr-2" />
+              {/* Emergency Contact */}
+              {(staff.emergency_contact_name || staff.emergency_contact_phone) && (
+                <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-2xl p-6 border border-red-100">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                    <AlertCircle className="w-6 h-6 mr-3 text-red-600" />
+                    Emergency Contact
+                  </h3>
+                  <div className="space-y-1">
+                    <InfoRow 
+                      icon={User} 
+                      label="Contact Name" 
+                      value={staff.emergency_contact_name} 
+                    />
+                    <InfoRow 
+                      icon={Phone} 
+                      label="Contact Phone" 
+                      value={staff.emergency_contact_phone}
+                      copyable 
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column - Professional Information */}
+            <div className="space-y-6">
+              {/* Professional Details */}
+              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-6 border border-yellow-100">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                  <Briefcase className="w-6 h-6 mr-3 text-yellow-600" />
+                  Professional Information
+                </h3>
+                <div className="space-y-1">
+                  <InfoRow 
+                    icon={Shield} 
+                    label="Role" 
+                    value={roleInfo.label} 
+                  />
+                  <InfoRow 
+                    icon={Briefcase} 
+                    label="Designation" 
+                    value={staff.designation} 
+                  />
+                  <InfoRow 
+                    icon={Building2} 
+                    label="Department" 
+                    value={staff.department} 
+                  />
+                  <InfoRow 
+                    icon={Calendar} 
+                    label="Joining Date" 
+                    value={formatDate(staff.joining_date)} 
+                  />
+                  {staff.salary && (
+                    <InfoRow 
+                      icon={CreditCard} 
+                      label="Salary" 
+                      value={`₹${parseInt(staff.salary).toLocaleString()}`}
+                      sensitive={true}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Enhanced Branch Assignment */}
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-100">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                  <Building2 className="w-6 h-6 mr-3 text-indigo-600" />
+                  Branch Assignment
+                </h3>
+                {branchInfo ? (
+                  <div className="p-4 bg-white rounded-lg border border-indigo-200">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                        <Building2 className="w-6 h-6 text-indigo-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900 text-lg">
+                          {branchInfo.name}
+                        </p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          {branchInfo.code && (
+                            <span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded-full font-medium">
+                              {branchInfo.code}
+                            </span>
+                          )}
+                          {branchInfo.is_head_office && (
+                            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full font-medium flex items-center space-x-1">
+                              <Crown className="w-3 h-3" />
+                              <span>Head Office</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Branch Location */}
+                    {(branchInfo.city || branchInfo.state) && (
+                      <div className="flex items-center space-x-2 text-sm text-gray-600 mb-2">
+                        <MapPin className="w-4 h-4 text-gray-400" />
+                        <span>
+                          {branchInfo.city}
+                          {branchInfo.city && branchInfo.state && ', '}
+                          {branchInfo.state}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Branch Contact */}
+                    <div className="space-y-1 text-sm">
+                      {branchInfo.phone && (
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <Phone className="w-4 h-4 text-gray-400" />
+                          <span>{branchInfo.phone}</span>
+                        </div>
+                      )}
+                      {branchInfo.email && (
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <Mail className="w-4 h-4 text-gray-400" />
+                          <span>{branchInfo.email}</span>
+                        </div>
+                      )}
+                      {branchInfo.address && (
+                        <div className="flex items-start space-x-2 text-gray-600">
+                          <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+                          <span className="text-xs">{branchInfo.address}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <AlertCircle className="w-5 h-5 text-gray-400" />
+                    <span className="text-gray-600">No branch assigned</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Account Information */}
+              <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-6 border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                  <Clock className="w-6 h-6 mr-3 text-gray-600" />
                   Account Information
                 </h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-1">
+                <div className="space-y-1">
                   <InfoRow 
                     icon={Calendar} 
                     label="Created" 
-                    value={formatDate(staff.created_at)} 
+                    value={formatDateTime(staff.created_at)} 
                   />
                   <InfoRow 
                     icon={Calendar} 
                     label="Last Updated" 
-                    value={formatDate(staff.updated_at)} 
+                    value={formatDateTime(staff.updated_at)} 
                   />
                   <InfoRow 
-                    icon={Calendar} 
+                    icon={Clock} 
                     label="Last Login" 
-                    value={formatDate(staff.last_login)} 
+                    value={formatDateTime(staff.last_login)} 
+                  />
+                  <InfoRow 
+                    icon={UserCheck} 
+                    label="Status" 
+                    value={staff.is_active ? 'Active' : 'Inactive'} 
                   />
                 </div>
               </div>
@@ -341,23 +550,43 @@ export default function StaffViewModal({ staff, branches, onClose, onEdit }) {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
-          <Button
-            variant="outline"
-            onClick={onClose}
-          >
-            Close
-          </Button>
-          {onEdit && (
+        {/* Footer Actions */}
+        <div className="border-t border-gray-200 p-6 bg-gray-50 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="w-5 h-5 text-green-500" />
+            <span className="text-sm text-gray-600">
+              Member since: {formatDate(staff.joining_date || staff.created_at)}
+            </span>
+          </div>
+          
+          <div className="flex space-x-3">
             <Button
-              variant="primary"
-              onClick={onEdit}
-              icon={<Edit className="w-4 h-4" />}
+              variant="outline"
+              onClick={onClose}
             >
-              Edit Staff
+              Close
             </Button>
-          )}
+            
+            {onEdit && (
+              <Button
+                variant="primary"
+                onClick={onEdit}
+                icon={<Edit className="w-4 h-4" />}
+              >
+                Edit Staff
+              </Button>
+            )}
+            
+            {onDelete && (
+              <Button
+                variant="danger"
+                onClick={onDelete}
+                icon={<Trash2 className="w-4 h-4" />}
+              >
+                Remove Staff
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
-export class StaffService {
-  static async getStaff(params = {}, headers = {}) {
+export const StaffService = {
+  async getStaff(params = {}, headers = {}) {
     try {
       const queryParams = new URLSearchParams();
       
@@ -23,9 +23,9 @@ export class StaffService {
       console.error('Get staff error:', error);
       return { success: false, error: 'Failed to fetch staff data' };
     }
-  }
+  },
 
-  static async getBranches(headers = {}) {
+  async getBranches(headers = {}) {
     try {
       const response = await fetch('/api/staff/branches', {
         method: 'GET',
@@ -41,9 +41,9 @@ export class StaffService {
       console.error('Get branches error:', error);
       return { success: false, error: 'Failed to fetch branches' };
     }
-  }
+  },
 
-  static async createStaff(staffData, headers = {}) {
+  async createStaff(staffData, headers = {}) {
     try {
       const response = await fetch('/api/staff', {
         method: 'POST',
@@ -60,10 +60,12 @@ export class StaffService {
       console.error('Create staff error:', error);
       return { success: false, error: 'Failed to create staff member' };
     }
-  }
+  },
 
-  static async updateStaff(staffId, staffData, headers = {}) {
+  async updateStaff(staffId, staffData, headers) {
     try {
+      console.log('🔄 Updating staff:', { staffId, staffData });
+
       const response = await fetch(`/api/staff/${staffId}`, {
         method: 'PUT',
         headers: {
@@ -74,32 +76,67 @@ export class StaffService {
       });
 
       const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error('Update staff error:', error);
-      return { success: false, error: 'Failed to update staff member' };
-    }
-  }
 
-  static async deleteStaff(staffId, headers = {}) {
+      if (response.ok) {
+        console.log('✅ Staff updated successfully:', result);
+        return {
+          success: true,
+          data: result.data,
+          message: result.message || 'Staff updated successfully'
+        };
+      } else {
+        console.error('❌ Failed to update staff:', result);
+        return {
+          success: false,
+          error: result.error || result.message || 'Failed to update staff'
+        };
+      }
+    } catch (error) {
+      console.error('❌ Update staff error:', error);
+      return {
+        success: false,
+        error: 'Network error. Please try again.'
+      };
+    }
+  },
+
+  async deleteStaff(staffId, headers) {
     try {
+      console.log('🗑️ Deleting staff:', { staffId });
+
       const response = await fetch(`/api/staff/${staffId}`, {
         method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json',
           ...headers
         }
       });
 
       const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error('Delete staff error:', error);
-      return { success: false, error: 'Failed to delete staff member' };
-    }
-  }
 
-  static async exportStaff(filters = {}, headers = {}) {
+      if (response.ok) {
+        console.log('✅ Staff deleted successfully:', result);
+        return {
+          success: true,
+          data: result.data,
+          message: result.message || 'Staff deleted successfully'
+        };
+      } else {
+        console.error('❌ Failed to delete staff:', result);
+        return {
+          success: false,
+          error: result.error || result.message || 'Failed to delete staff'
+        };
+      }
+    } catch (error) {
+      console.error('❌ Delete staff error:', error);
+      return {
+        success: false,
+        error: 'Network error. Please try again.'
+      };
+    }
+  },
+
+  async exportStaff(filters = {}, headers = {}) {
     try {
       const queryParams = new URLSearchParams();
       
@@ -126,10 +163,10 @@ export class StaffService {
       console.error('Export staff error:', error);
       return { success: false, error: 'Failed to export staff data' };
     }
-  }
+  },
 
   // Excel upload functionality (updated to work without multer)
-  static async uploadStaffExcel(file, headers = {}) {
+  async uploadStaffExcel(file, headers = {}) {
     try {
       // Convert file to base64
       const fileData = await this.fileToBase64(file);
@@ -152,10 +189,10 @@ export class StaffService {
       console.error('Upload staff excel error:', error);
       return { success: false, error: 'Failed to upload staff excel file' };
     }
-  }
+  },
 
   // Download sample Excel template (with CSV fallback)
-  static async downloadSampleExcel(headers = {}) {
+  async downloadSampleExcel(headers = {}) {
     try {
       const response = await fetch('/api/staff/sample-excel', {
         method: 'GET',
@@ -192,10 +229,10 @@ export class StaffService {
       console.error('Download sample excel error:', error);
       return { success: false, error: 'Failed to download sample excel: ' + error.message };
     }
-  }
+  },
 
   // Validate Excel data before upload (updated to work without multer)
-  static async validateStaffExcel(file, headers = {}) {
+  async validateStaffExcel(file, headers = {}) {
     try {
       // Convert file to base64
       const fileData = await this.fileToBase64(file);
@@ -218,10 +255,10 @@ export class StaffService {
       console.error('Validate staff excel error:', error);
       return { success: false, error: 'Failed to validate staff excel file' };
     }
-  }
+  },
 
   // Helper method to convert file to base64
-  static fileToBase64(file) {
+  fileToBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -233,4 +270,4 @@ export class StaffService {
       reader.onerror = error => reject(error);
     });
   }
-}
+};

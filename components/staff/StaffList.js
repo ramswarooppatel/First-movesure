@@ -24,10 +24,10 @@ import StaffViewModal from './StaffViewModal';
 import Button from '@/components/common/Button';
 
 export default function StaffList({ staff, branches, onUpdate, pagination, onPageChange }) {
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [viewMode, setViewMode] = useState('table'); // Add this line - missing state
 
   const getRoleIcon = (role) => {
     switch (role) {
@@ -65,13 +65,13 @@ export default function StaffList({ staff, branches, onUpdate, pagination, onPag
     return branch ? `${branch.name}${branch.is_head_office ? ' (HO)' : ''}` : 'N/A';
   };
 
-  const handleEdit = (staff) => {
-    setSelectedStaff(staff);
+  const handleEditStaff = (staffMember) => {
+    setSelectedStaff(staffMember);
     setShowEditModal(true);
   };
 
-  const handleView = (staff) => {
-    setSelectedStaff(staff);
+  const handleViewStaff = (staffMember) => {
+    setSelectedStaff(staffMember);
     setShowViewModal(true);
   };
 
@@ -88,9 +88,9 @@ export default function StaffList({ staff, branches, onUpdate, pagination, onPag
   }
 
   return (
-    <div className="space-y-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       {/* View Mode Toggle */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between p-4">
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setViewMode('grid')}
@@ -121,20 +121,20 @@ export default function StaffList({ staff, branches, onUpdate, pagination, onPag
 
       {/* Staff Display */}
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
           {staff.map(member => (
             <StaffCard
               key={member.id}
               staff={member}
               branch={getBranchName(member.branch_id)}
-              onEdit={() => handleEdit(member)}
-              onView={() => handleView(member)}
+              onEdit={() => handleEditStaff(member)}
+              onView={() => handleViewStaff(member)}
               onUpdate={onUpdate}
             />
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden p-4">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -204,14 +204,14 @@ export default function StaffList({ staff, branches, onUpdate, pagination, onPag
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => handleView(member)}
+                          onClick={() => handleViewStaff(member)}
                           className="text-blue-600 hover:text-blue-700 p-1 rounded"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleEdit(member)}
+                          onClick={() => handleEditStaff(member)}
                           className="text-green-600 hover:text-green-700 p-1 rounded"
                           title="Edit Staff"
                         >
@@ -308,9 +308,14 @@ export default function StaffList({ staff, branches, onUpdate, pagination, onPag
 
       {showViewModal && selectedStaff && (
         <StaffViewModal
+          isOpen={showViewModal}
           staff={selectedStaff}
           branches={branches}
           onClose={() => setShowViewModal(false)}
+          onEdit={() => {
+            setShowViewModal(false);
+            setShowEditModal(true);
+          }}
         />
       )}
     </div>

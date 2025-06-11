@@ -1,23 +1,20 @@
+import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { AuthUtils } from '@/utils/auth';
 
-export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
-  }
-
+export async function GET(request) {
   try {
-    const authHeader = req.headers.authorization;
+    const authHeader = request.headers.get('authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, error: 'No token provided' });
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 });
     }
 
     const token = authHeader.split(' ')[1];
     const decoded = AuthUtils.verifyToken(token);
     
     if (!decoded) {
-      return res.status(401).json({ success: false, error: 'Invalid token' });
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const { userId } = decoded;
@@ -30,7 +27,7 @@ export default async function handler(req, res) {
       .single();
 
     if (userError || !userData) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Get branches for the company
@@ -46,12 +43,16 @@ export default async function handler(req, res) {
       throw error;
     }
 
-    return res.status(200).json({
+    return NextResponse.json({
       success: true,
       data: data || []
     });
+
   } catch (error) {
     console.error('Get branches error:', error);
-    return res.status(500).json({ success: false, error: 'Failed to fetch branches' });
+    return NextResponse.json({ 
+      success: false, 
+      error: 'Failed to fetch branches' 
+    }, { status: 500 });
   }
 }
