@@ -18,8 +18,11 @@ import Button from '@/components/common/Button';
 import BranchViewModal from './BranchViewModal';
 import BranchEditModal from './BranchEditModal';
 import BranchDeleteModal from './BranchDeleteModal';
+import { BranchService } from '@/services/branchService';
+import { useAuth } from '@/context/AuthContext';
 
 export default function BranchList({ branches, onUpdate, pagination, onPageChange, viewMode = 'grid', onViewBranchStaff }) {
+  const { getAuthHeaders } = useAuth();
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -52,23 +55,57 @@ export default function BranchList({ branches, onUpdate, pagination, onPageChang
     onUpdate?.(pagination.page); // Refresh current page
   };
 
-  const formatOperatingHours = (openTime, closeTime) => {
-    if (!openTime || !closeTime) return 'Not set';
-    return `${openTime} - ${closeTime}`;
+  // Enhanced delete confirmation handler with better error handling
+  const handleDeleteConfirm = async () => {
+    if (!selectedBranch) return;
+
+    try {
+      console.log('Attempting to delete branch:', selectedBranch.id);
+      const headers = getAuthHeaders();
+      console.log('Auth headers:', headers);
+      
+      const result = await BranchService.deleteBranch(selectedBranch.id, headers);
+      
+      if (result.success) {
+        // Close modal first
+        handleModalClose();
+        
+        // Show success message
+        console.log('Branch deleted successfully:', result.message);
+        
+        // Refresh the branch list to remove the deleted branch
+        await onUpdate?.(pagination.page);
+        
+        // If current page is empty after deletion and we're not on page 1, go to previous page
+        if (branches.length === 1 && pagination.page > 1) {
+          onPageChange?.(pagination.page - 1);
+        }
+      } else {
+        // Handle error
+        console.error('Failed to delete branch:', result.error);
+        alert(`Failed to delete branch: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting branch:', error);
+      alert(`An unexpected error occurred: ${error.message}`);
+    }
+  };
+
+  // Helper functions
+  const formatOperatingHours = (opening, closing) => {
+    if (!opening || !closing) return 'Not set';
+    return `${opening} - ${closing}`;
   };
 
   const formatWorkingDays = (workingDays) => {
     if (!workingDays) return 'Not set';
     const days = workingDays.split(',').map(day => day.trim());
     if (days.length === 7) return 'All days';
-    if (days.length === 6 && !days.includes('Sunday')) return 'Mon - Sat';
-    if (days.length === 5 && !days.includes('Saturday') && !days.includes('Sunday')) return 'Mon - Fri';
-    return days.join(', ');
+    if (days.length <= 3) return days.join(', ');
+    return `${days.slice(0, 2).join(', ')} +${days.length - 2} more`;
   };
 
-  const totalPages = Math.ceil(pagination.total / pagination.limit);
-
-  if (branches.length === 0) {
+  if (!branches || branches.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
         <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -147,26 +184,17 @@ export default function BranchList({ branches, onUpdate, pagination, onPageChang
                 <span className="truncate">{formatOperatingHours(branch.opening_time, branch.closing_time)}</span>
               </div>
 
-              {/* Working Days */}
-              <div className="mb-4">
-                <span className="text-xs text-gray-500">Working Days:</span>
-                <p className="text-sm text-gray-700">{formatWorkingDays(branch.working_days)}</p>
-              </div>
-
-              {/* Status Badge */}
-              <div className="flex items-center justify-between">
+              {/* Footer */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                 <div className="flex items-center space-x-2">
-                  {branch.is_head_office && (
-                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full font-medium">
-                      Head Office
-                    </span>
-                  )}
-                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                    branch.is_active 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    branch.is_head_office 
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : branch.is_active 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
                   }`}>
-                    {branch.is_active ? 'Active' : 'Inactive'}
+                    {branch.is_head_office ? 'Head Office' : (branch.is_active ? 'Active' : 'Inactive')}
                   </span>
                 </div>
                 
@@ -326,39 +354,44 @@ export default function BranchList({ branches, onUpdate, pagination, onPageChang
           </div>
         </div>
       )}
-
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Button
-              onClick={() => onPageChange(pagination.page - 1)}
-              disabled={pagination.page <= 1}
-              variant="outline"
-              size="sm"
-            >
-              Previous
-            </Button>
-            <Button
-              onClick={() => onPageChange(pagination.page + 1)}
-              disabled={pagination.page >= totalPages}
-              variant="outline"
-              size="sm"
-            >
-              Next
-            </Button>
-          </div>
-          
-          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Showing page <span className="font-medium">{pagination.page}</span> of{' '}
-                <span className="font-medium">{totalPages}</span>
-              </p>
+      {pagination.total > pagination.limit && (() => {
+        const totalPages = Math.ceil(pagination.total / pagination.limit);
+        
+        return (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Button
+                  onClick={() => onPageChange(pagination.page - 1)}
+                  disabled={pagination.page <= 1}
+                  variant="outline"
+                  size="sm"
+                >
+                  Previous
+                </Button>
+                <Button
+                  onClick={() => onPageChange(pagination.page + 1)}
+                  disabled={pagination.page >= totalPages}
+                  variant="outline"
+                  size="sm"
+                >
+                  Next
+                </Button>
+              </div>
+              
+              <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Showing page <span className="font-medium">{pagination.page}</span> of{' '}
+                    <span className="font-medium">{totalPages}</span>
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Modals */}
       {showEditModal && selectedBranch && (
@@ -381,7 +414,7 @@ export default function BranchList({ branches, onUpdate, pagination, onPageChang
         <BranchDeleteModal
           branch={selectedBranch}
           onClose={handleModalClose}
-          onConfirm={handleSuccess}
+          onConfirm={handleDeleteConfirm}
         />
       )}
     </div>

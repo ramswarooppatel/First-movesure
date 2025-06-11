@@ -75,7 +75,6 @@ export default function BranchManagement() {
                          user?.company?.id ||
                          user?.profile?.company_id;
     
-    console.log('getCompanyId - Final company ID:', userCompanyId);
     return userCompanyId;
   }, [companyId, user]);
 
@@ -87,11 +86,8 @@ export default function BranchManagement() {
       
       const userCompanyId = getCompanyId();
       
-      console.log('fetchBranches - Company ID:', userCompanyId);
-      console.log('fetchBranches - Page:', page);
-      
       if (!userCompanyId) {
-        throw new Error(`Company ID not available. User fields: ${user ? Object.keys(user).join(', ') : 'No user'}`);
+        throw new Error('Company ID not available. Please refresh and try again.');
       }
       
       const response = await BranchService.getBranches({
@@ -110,7 +106,7 @@ export default function BranchManagement() {
     } finally {
       setLoading(false);
     }
-  }, [getCompanyId, user, filters]);
+  }, [getCompanyId, filters]);
 
   // Debounced search effect
   useEffect(() => {
@@ -123,10 +119,9 @@ export default function BranchManagement() {
       
       return () => clearTimeout(timeoutId);
     } else if (user === null || user === undefined) {
-      console.log('User data still loading...');
       setLoading(true);
     } else {
-      setError(`No company associated with your account. Available user fields: ${Object.keys(user || {}).join(', ')}`);
+      setError('No company associated with your account. Please contact support.');
       setLoading(false);
     }
   }, [filters, getCompanyId, user, fetchBranches]);
@@ -185,12 +180,20 @@ export default function BranchManagement() {
         if (result.success) {
           setShowDeleteModal(false);
           setSelectedBranch(null);
+          
+          // Show success message (you can implement toast notification here)
+          console.log('Branch deleted successfully:', result.message);
+          
+          // Refresh the branch list
           fetchBranches(pagination.currentPage);
         } else {
-          throw new Error(result.error);
+          // Handle error (you can implement error toast here)
+          console.error('Failed to delete branch:', result.error);
+          alert(`Failed to delete branch: ${result.error}`);
         }
       } catch (error) {
         console.error('Error deleting branch:', error);
+        alert('An unexpected error occurred while deleting the branch.');
       }
     }
   };
@@ -203,8 +206,6 @@ export default function BranchManagement() {
 
   const handleViewBranchStaff = (branch) => {
     const userCompanyId = getCompanyId();
-    console.log('handleViewBranchStaff - Branch:', branch);
-    console.log('handleViewBranchStaff - Company ID:', userCompanyId);
     
     if (!userCompanyId) {
       alert('Company ID not available. Please refresh and try again.');
@@ -245,12 +246,6 @@ export default function BranchManagement() {
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <div className="text-red-800 font-medium mb-2">Error Loading Branches</div>
         <div className="text-red-600 text-sm mb-4">{error}</div>
-        <div className="text-xs text-gray-600 mb-4">
-          <strong>Debug Info:</strong><br/>
-          User: {user ? 'Loaded' : 'Not loaded'}<br/>
-          Company ID: {getCompanyId() || 'Not available'}<br/>
-          User Keys: {user ? Object.keys(user).join(', ') : 'No user'}
-        </div>
         <Button 
           onClick={() => fetchBranches(1)}
           variant="outline"
@@ -289,15 +284,6 @@ export default function BranchManagement() {
             </Button>
           </div>
         </div>
-
-        {/* Debug Info (Development only) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs">
-            <strong>Debug Info:</strong> Company ID: {getCompanyId() || 'Not available'} | 
-            User ID: {user?.id || 'Not available'} | 
-            Branches Count: {branches.length}
-          </div>
-        )}
 
         {/* Filters */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">

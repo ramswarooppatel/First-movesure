@@ -83,20 +83,41 @@ export class BranchService {
 
   static async deleteBranch(branchId, headers = {}) {
     try {
+      console.log('Deleting branch with ID:', branchId);
+      console.log('Using headers:', headers);
+      
       const response = await fetch(`/api/branches/${branchId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          ...headers,
-        },
+          ...headers
+        }
       });
 
+      console.log('Delete response status:', response.status);
+      console.log('Delete response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete branch');
+        const responseText = await response.text();
+        console.error('Delete API Error Response:', responseText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(responseText);
+        } catch (parseError) {
+          // If response is not JSON (like HTML error page), create a meaningful error
+          if (responseText.includes('<!DOCTYPE')) {
+            throw new Error(`API endpoint not found (${response.status}). Check if the API route exists.`);
+          }
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        throw new Error(errorData.error || `Failed to delete branch: ${response.status}`);
       }
 
-      return { success: true };
+      const result = await response.json();
+      console.log('Branch deleted successfully:', result);
+      return { success: true, data: result.data, message: result.message };
     } catch (error) {
       console.error('Error deleting branch:', error);
       return { success: false, error: error.message };

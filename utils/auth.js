@@ -24,22 +24,33 @@ export class AuthUtils {
   }
 
   // Generate JWT token
-  static generateToken(payload, expiresIn = '24h') {
+  static generateToken(payload) {
     try {
-      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn });
-      return token;
+      if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET environment variable is not set');
+      }
+      
+      return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
     } catch (error) {
-      throw new Error('Token generation failed');
+      console.error('Token generation failed:', error.message);
+      throw error;
     }
   }
 
   // Verify JWT token
   static verifyToken(token) {
     try {
+      if (!process.env.JWT_SECRET) {
+        console.error('JWT_SECRET environment variable is not set');
+        return null;
+      }
+      
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('Token decoded successfully:', { userId: decoded.userId, role: decoded.role });
       return decoded;
     } catch (error) {
-      throw new Error('Token verification failed');
+      console.error('Token verification failed:', error.message);
+      return null;
     }
   }
 
