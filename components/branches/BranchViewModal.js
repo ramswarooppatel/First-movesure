@@ -29,15 +29,20 @@ import {
   ExternalLink,
   UserCheck,
   UserX,
-  Loader
+  Loader,
+  UserPlus,
+  UserMinus
 } from 'lucide-react';
 import Button from '@/components/common/Button';
 import { useBranchStaff } from '@/hooks/useBranchStaff';
+import StaffAssignmentModal from './StaffAssignmentModal';
 
 export default function BranchViewModal({ branch, onClose, onEdit }) {
   const [copied, setCopied] = useState('');
   const [showActions, setShowActions] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [showAssignStaffModal, setShowAssignStaffModal] = useState(false);
+  const [selectedStaffForRemoval, setSelectedStaffForRemoval] = useState([]);
   
   // Use the custom hook for staff data
   const { staffData, staffLoading, staffError, fetchBranchStaff } = useBranchStaff();
@@ -90,6 +95,43 @@ export default function BranchViewModal({ branch, onClose, onEdit }) {
     { id: 'operations', label: 'Operations', icon: <Clock className="w-4 h-4" /> },
     { id: 'analytics', label: 'Analytics', icon: <Activity className="w-4 h-4" /> }
   ];
+
+  // Add this function to handle staff assignment success
+  const handleStaffAssignmentSuccess = (result) => {
+    // Refresh staff data
+    fetchBranchStaff(branch.id);
+    setShowAssignStaffModal(false);
+    
+    // Show detailed success message if there were transfers
+    if (result?.data?.transfers?.length > 0) {
+      console.log('Staff transfers completed:', result.data.transfers);
+      // You could show a toast notification here with transfer details
+    }
+  };
+
+  // Add this function to remove staff from branch
+  const handleRemoveStaffFromBranch = async (staffIds) => {
+    try {
+      const response = await fetch('/api/staff/unassign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ staffIds })
+      });
+
+      if (response.ok) {
+        // Refresh staff data
+        fetchBranchStaff(branch.id);
+        setSelectedStaffForRemoval([]);
+      } else {
+        console.error('Failed to remove staff from branch');
+      }
+    } catch (error) {
+      console.error('Error removing staff from branch:', error);
+    }
+  };
 
   return (
     <div 
@@ -418,10 +460,34 @@ export default function BranchViewModal({ branch, onClose, onEdit }) {
             <div className="space-y-8">
               {/* Staff Statistics */}
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-white/50 shadow-lg">
-                <h4 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                  <Users className="w-6 h-6 mr-3 text-blue-600" />
-                  Staff Overview
-                </h4>
+                <div className="flex items-center justify-between mb-6">
+                  <h4 className="text-xl font-bold text-gray-900 flex items-center">
+                    <Users className="w-6 h-6 mr-3 text-blue-600" />
+                    Staff Overview
+                  </h4>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center space-x-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowAssignStaffModal(true)}
+                      icon={<UserPlus className="w-4 h-4" />}
+                      className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                    >
+                      Assign Staff
+                    </Button>
+                    {selectedStaffForRemoval.length > 0 && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleRemoveStaffFromBranch(selectedStaffForRemoval)}
+                        icon={<UserMinus className="w-4 h-4" />}
+                        className="border-red-300 text-red-600 hover:bg-red-50"
+                      >
+                        Remove ({selectedStaffForRemoval.length})
+                      </Button>
+                    )}
+                  </div>
+                </div>
                 
                 {staffLoading ? (
                   <div className="flex items-center justify-center py-8">
@@ -465,7 +531,7 @@ export default function BranchViewModal({ branch, onClose, onEdit }) {
                       </div>
                     </div>
 
-                    {/* Role Breakdown */}
+                    {/* Role Distribution */}
                     <div className="bg-gray-50 rounded-xl p-6">
                       <h5 className="text-lg font-semibold text-gray-900 mb-4">Role Distribution</h5>
                       <div className="space-y-3">
@@ -487,14 +553,40 @@ export default function BranchViewModal({ branch, onClose, onEdit }) {
                       </div>
                     </div>
 
-                    {/* Recent Staff */}
+                    {/* Staff List with Selection */}
                     {staffData?.data && staffData.data.length > 0 && (
                       <div>
-                        <h5 className="text-lg font-semibold text-gray-900 mb-4">Recent Staff Members</h5>
-                        <div className="space-y-3">
-                          {staffData.data.slice(0, 5).map((staff) => (
-                            <div key={staff.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+                        <div className="flex items-center justify-between mb-4">
+                          <h5 className="text-lg font-semibold text-gray-900">Staff Members</h5>
+                          {staffData.data.length > 5 && (
+                            <button
+                              onClick={() => setSelectedStaffForRemoval(
+                                selectedStaffForRemoval.length === staffData.data.length 
+                                  ? [] 
+                                  : staffData.data.map(s => s.id)
+                              )}
+                              className="text-sm text-blue-600 hover:text-blue-700"
+                            >
+                              {selectedStaffForRemoval.length === staffData.data.length ? 'Deselect All' : 'Select All'}
+                            </button>
+                          )}
+                        </div>
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                          {staffData.data.map((staff) => (
+                            <div key={staff.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-all duration-200">
                               <div className="flex items-center space-x-3">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedStaffForRemoval.includes(staff.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedStaffForRemoval(prev => [...prev, staff.id]);
+                                    } else {
+                                      setSelectedStaffForRemoval(prev => prev.filter(id => id !== staff.id));
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                />
                                 <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
                                   <span className="text-white font-medium text-sm">
                                     {(staff.first_name?.[0] || '').toUpperCase()}
@@ -506,18 +598,44 @@ export default function BranchViewModal({ branch, onClose, onEdit }) {
                                     {staff.first_name} {staff.last_name}
                                   </p>
                                   <p className="text-sm text-gray-500">{staff.designation || staff.role}</p>
+                                  {staff.email && (
+                                    <p className="text-xs text-gray-400">{staff.email}</p>
+                                  )}
                                 </div>
                               </div>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                staff.is_active 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                                {staff.is_active ? 'Active' : 'Inactive'}
-                              </span>
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  staff.is_active 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {staff.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  {staff.role?.replace('_', ' ')}
+                                </span>
+                              </div>
                             </div>
                           ))}
                         </div>
+                      </div>
+                    )}
+
+                    {/* No Staff Message */}
+                    {(!staffData?.data || staffData.data.length === 0) && (
+                      <div className="text-center py-8">
+                        <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Staff Assigned</h3>
+                        <p className="text-gray-600 mb-4">
+                          This branch doesn't have any staff members assigned yet.
+                        </p>
+                        <Button
+                          onClick={() => setShowAssignStaffModal(true)}
+                          icon={<UserPlus className="w-4 h-4" />}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          Assign Staff to Branch
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -726,6 +844,15 @@ export default function BranchViewModal({ branch, onClose, onEdit }) {
           </div>
         </div>
       </div>
+
+      {/* Staff Assignment Modal */}
+      {showAssignStaffModal && (
+        <StaffAssignmentModal
+          branch={branch}
+          onClose={() => setShowAssignStaffModal(false)}
+          onSuccess={handleStaffAssignmentSuccess}
+        />
+      )}
     </div>
   );
 }
