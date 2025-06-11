@@ -74,20 +74,18 @@ export default function OwnerDetails({ data, updateData, onLoadingChange }) {
     }
   };
 
-  // Handle photo change from PhotoUpload component
-  const handlePhotoChange = (photoData) => {
+  // Handle photo change from PhotoUpload component - CORRECTED
+  const handlePhotoChange = (photoData, filename) => {
     if (photoData) {
-      // Store the complete photo data
-      handleChange('photo', photoData.photo);
-      handleChange('photoFileName', photoData.fileName);
-      handleChange('photoFileSize', photoData.fileSize);
-      handleChange('photoUploadedAt', photoData.uploadedAt);
+      // photoData is already a base64 string from PhotoUpload component
+      handleChange('photo', photoData);
+      if (filename) {
+        handleChange('photoFileName', filename);
+      }
     } else {
       // Remove photo
       handleChange('photo', '');
       handleChange('photoFileName', '');
-      handleChange('photoFileSize', '');
-      handleChange('photoUploadedAt', '');
     }
   };
 
