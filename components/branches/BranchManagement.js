@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Building2, 
   Plus, 
@@ -12,16 +12,27 @@ import {
   Users,
   Edit,
   Trash2,
-  Eye
+  Eye,
+  RefreshCw,
+  Grid,
+  List
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import BranchService from '@/app/services/branchService';
+import { BranchService } from '@/services/branchService';
+
+// Import existing components
+import BranchList from './BranchList';
 import BranchDetailsModal from './BranchDetailsModal';
+import BranchAddModal from './BranchAddModal';
+import BranchEditModal from './BranchEditModal';
+import BranchViewModal from './BranchViewModal';
+import BranchDeleteModal from './BranchDeleteModal';
 import StaffDetailsModal from '../staff/StaffDetailsModal';
 import StaffListModal from '../staff/StaffListModal';
+import Button from '@/components/common/Button';
 
 export default function BranchManagement() {
-  const { user, companyId } = useAuth();
+  const { user, companyId, getAuthHeaders } = useAuth();
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,8 +48,15 @@ export default function BranchManagement() {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [showBranchModal, setShowBranchModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showStaffListModal, setShowStaffListModal] = useState(false);
+
+  // View mode
+  const [viewMode, setViewMode] = useState('grid');
 
   // Filters
   const [filters, setFilters] = useState({
@@ -50,7 +68,7 @@ export default function BranchManagement() {
   });
 
   // Get the actual company ID
-  const getCompanyId = () => {
+  const getCompanyId = useCallback(() => {
     const userCompanyId = companyId || 
                          user?.company_id || 
                          user?.companyId || 
@@ -59,9 +77,10 @@ export default function BranchManagement() {
     
     console.log('getCompanyId - Final company ID:', userCompanyId);
     return userCompanyId;
-  };
+  }, [companyId, user]);
 
-  const fetchBranches = async (page = 1) => {
+  // Optimized fetch function with caching
+  const fetchBranches = useCallback(async (page = 1) => {
     try {
       setLoading(true);
       setError(null);
@@ -69,7 +88,7 @@ export default function BranchManagement() {
       const userCompanyId = getCompanyId();
       
       console.log('fetchBranches - Company ID:', userCompanyId);
-      console.log('fetchBranches - User object:', user);
+      console.log('fetchBranches - Page:', page);
       
       if (!userCompanyId) {
         throw new Error(`Company ID not available. User fields: ${user ? Object.keys(user).join(', ') : 'No user'}`);
@@ -91,16 +110,18 @@ export default function BranchManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getCompanyId, user, filters]);
 
+  // Debounced search effect
   useEffect(() => {
     const userCompanyId = getCompanyId();
     
-    console.log('Effect - Company ID:', userCompanyId);
-    console.log('Effect - User:', user);
-    
     if (userCompanyId) {
-      fetchBranches(1);
+      const timeoutId = setTimeout(() => {
+        fetchBranches(1);
+      }, 300); // 300ms debounce
+      
+      return () => clearTimeout(timeoutId);
     } else if (user === null || user === undefined) {
       console.log('User data still loading...');
       setLoading(true);
@@ -108,7 +129,7 @@ export default function BranchManagement() {
       setError(`No company associated with your account. Available user fields: ${Object.keys(user || {}).join(', ')}`);
       setLoading(false);
     }
-  }, [filters, companyId, user?.company_id, user?.companyId, user]);
+  }, [filters, getCompanyId, user, fetchBranches]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({
@@ -121,11 +142,60 @@ export default function BranchManagement() {
     fetchBranches(newPage);
   };
 
-  const handleViewBranch = (branch) => {
-    setSelectedBranch(branch);
-    setShowBranchModal(true);
+  const handleRefresh = () => {
+    fetchBranches(pagination.currentPage);
   };
 
+  // Branch CRUD operations
+  const handleAddBranch = () => {
+    setShowAddModal(true);
+  };
+
+  const handleEditBranch = (branch) => {
+    setSelectedBranch(branch);
+    setShowEditModal(true);
+  };
+
+  const handleViewBranch = (branch) => {
+    setSelectedBranch(branch);
+    setShowViewModal(true);
+  };
+
+  const handleDeleteBranch = (branch) => {
+    setSelectedBranch(branch);
+    setShowDeleteModal(true);
+  };
+
+  const handleBranchCreated = () => {
+    setShowAddModal(false);
+    fetchBranches(pagination.currentPage);
+  };
+
+  const handleBranchUpdated = () => {
+    setShowEditModal(false);
+    setSelectedBranch(null);
+    fetchBranches(pagination.currentPage);
+  };
+
+  const handleBranchDeleted = async () => {
+    if (selectedBranch) {
+      try {
+        const result = await BranchService.deleteBranch(selectedBranch.id, getAuthHeaders());
+        
+        if (result.success) {
+          setShowDeleteModal(false);
+          setSelectedBranch(null);
+          fetchBranches(pagination.currentPage);
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        console.error('Error deleting branch:', error);
+      }
+    }
+  };
+
+  // Staff operations
   const handleViewStaff = (staff) => {
     setSelectedStaff(staff);
     setShowStaffModal(true);
@@ -145,6 +215,7 @@ export default function BranchManagement() {
     setShowStaffListModal(true);
   };
 
+  // Modal close handlers
   const closeBranchModal = () => {
     setShowBranchModal(false);
     setSelectedBranch(null);
@@ -180,12 +251,13 @@ export default function BranchManagement() {
           Company ID: {getCompanyId() || 'Not available'}<br/>
           User Keys: {user ? Object.keys(user).join(', ') : 'No user'}
         </div>
-        <button 
+        <Button 
           onClick={() => fetchBranches(1)}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          variant="outline"
+          icon={<RefreshCw className="w-4 h-4" />}
         >
           Retry
-        </button>
+        </Button>
       </div>
     );
   }
@@ -199,10 +271,23 @@ export default function BranchManagement() {
             <h1 className="text-2xl font-bold text-gray-900">Branch Management</h1>
             <p className="text-gray-600">Manage your business locations and operations</p>
           </div>
-          <button className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Branch
-          </button>
+          <div className="flex items-center space-x-3">
+            <Button
+              onClick={handleRefresh}
+              variant="outline"
+              icon={<RefreshCw className="w-4 h-4" />}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+            <Button
+              onClick={handleAddBranch}
+              variant="primary"
+              icon={<Plus className="w-4 h-4" />}
+            >
+              Add Branch
+            </Button>
+          </div>
         </div>
 
         {/* Debug Info (Development only) */}
@@ -216,8 +301,8 @@ export default function BranchManagement() {
 
         {/* Filters */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+            <div className="lg:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -268,82 +353,93 @@ export default function BranchManagement() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-              <input
-                type="text"
-                placeholder="Filter by state"
-                value={filters.state}
-                onChange={(e) => handleFilterChange('state', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+            <div className="flex items-end">
+              <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  title="Grid View"
+                >
+                  <Grid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`p-2 ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  title="Table View"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Branches Grid */}
-        {branches.length === 0 ? (
-          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-            <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No branches found</h3>
-            <p className="text-gray-600 mb-6">
-              {Object.values(filters).some(f => f && f !== 'all') 
-                ? 'No branches match your current filters.' 
-                : 'Get started by adding your first branch.'}
-            </p>
-            <button className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Your First Branch
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {branches.map((branch) => (
-              <BranchCard 
-                key={branch.id} 
-                branch={branch} 
-                onViewBranch={handleViewBranch}
-                onViewStaff={handleViewStaff}
-                onViewBranchStaff={handleViewBranchStaff}
-                companyId={getCompanyId()}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Showing {((pagination.currentPage - 1) * 12) + 1} to {Math.min(pagination.currentPage * 12, pagination.totalItems)} of {pagination.totalItems} branches
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => handlePageChange(pagination.currentPage - 1)}
-                disabled={!pagination.hasPreviousPage}
-                className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => handlePageChange(pagination.currentPage + 1)}
-                disabled={!pagination.hasNextPage}
-                className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Branches List using existing BranchList component */}
+        <BranchList
+          branches={branches}
+          onUpdate={fetchBranches}
+          pagination={{
+            page: pagination.currentPage,
+            limit: 12,
+            total: pagination.totalItems
+          }}
+          onPageChange={handlePageChange}
+          viewMode={viewMode}
+          onViewBranchStaff={handleViewBranchStaff}
+        />
       </div>
 
-      {/* Modals */}
+      {/* All Modals using existing components */}
+      
+      {/* Legacy Branch Details Modal */}
       <BranchDetailsModal 
         isOpen={showBranchModal}
         onClose={closeBranchModal}
         branch={selectedBranch}
       />
+
+      {/* New CRUD Modals */}
+      {showAddModal && (
+        <BranchAddModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={handleBranchCreated}
+        />
+      )}
+
+      {showEditModal && selectedBranch && (
+        <BranchEditModal
+          branch={selectedBranch}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedBranch(null);
+          }}
+          onSuccess={handleBranchUpdated}
+        />
+      )}
+
+      {showViewModal && selectedBranch && (
+        <BranchViewModal
+          branch={selectedBranch}
+          onClose={() => {
+            setShowViewModal(false);
+            setSelectedBranch(null);
+          }}
+          onEdit={handleEditBranch}
+        />
+      )}
+
+      {showDeleteModal && selectedBranch && (
+        <BranchDeleteModal
+          branch={selectedBranch}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setSelectedBranch(null);
+          }}
+          onConfirm={handleBranchDeleted}
+        />
+      )}
       
+      {/* Staff Modals */}
       <StaffDetailsModal 
         isOpen={showStaffModal}
         onClose={closeStaffModal}
@@ -357,98 +453,6 @@ export default function BranchManagement() {
         companyId={getCompanyId()}
       />
     </>
-  );
-}
-
-function BranchCard({ branch, onViewBranch, onViewStaff, onViewBranchStaff, companyId }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-6">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-blue-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">{branch.name}</h3>
-            <div className="flex items-center space-x-2 mt-1">
-              <span className="text-xs text-gray-500">{branch.code}</span>
-              {branch.is_head_office && (
-                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
-                  Head Office
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="flex space-x-1">
-          <button 
-            onClick={() => onViewBranch(branch)}
-            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-            title="View Branch Details"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          <button 
-            onClick={() => onViewBranchStaff(branch)}
-            className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-            title="View Branch Staff"
-          >
-            <Users className="w-4 h-4" />
-          </button>
-          <button className="p-1 text-gray-400 hover:text-blue-600 transition-colors">
-            <Edit className="w-4 h-4" />
-          </button>
-          <button className="p-1 text-gray-400 hover:text-red-600 transition-colors">
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-2 text-sm">
-        {branch.address && (
-          <div className="flex items-start space-x-2">
-            <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
-            <span className="text-gray-600">{branch.address}, {branch.city}, {branch.state}</span>
-          </div>
-        )}
-        {branch.phone && (
-          <div className="flex items-center space-x-2">
-            <Phone className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-600">{branch.phone}</span>
-          </div>
-        )}
-        {branch.email && (
-          <div className="flex items-center space-x-2">
-            <Mail className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-600">{branch.email}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <span className={`px-2 py-1 rounded-full ${
-            branch.is_active 
-              ? 'bg-green-100 text-green-700' 
-              : 'bg-red-100 text-red-700'
-          }`}>
-            {branch.is_active ? 'Active' : 'Inactive'}
-          </span>
-          <div className="flex items-center space-x-1">
-            <Clock className="w-3 h-3" />
-            <span>{branch.opening_time} - {branch.closing_time}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Debug info for development */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-400">
-          Branch ID: {branch.id}<br/>
-          Company ID: {companyId || 'Missing!'}
-        </div>
-      )}
-    </div>
   );
 }
 

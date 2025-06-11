@@ -17,34 +17,53 @@ import {
 import Button from '@/components/common/Button';
 import BranchViewModal from './BranchViewModal';
 import BranchEditModal from './BranchEditModal';
+import BranchDeleteModal from './BranchDeleteModal';
 
-export default function BranchList({ branches, onUpdate, pagination, onPageChange }) {
-  const [viewMode, setViewMode] = useState('grid');
+export default function BranchList({ branches, onUpdate, pagination, onPageChange, viewMode = 'grid', onViewBranchStaff }) {
   const [selectedBranch, setSelectedBranch] = useState(null);
-  const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-
-  const handleEdit = (branch) => {
-    setSelectedBranch(branch);
-    setShowEditModal(true);
-  };
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const handleView = (branch) => {
     setSelectedBranch(branch);
     setShowViewModal(true);
   };
 
-  const formatWorkingDays = (workingDays) => {
-    if (!workingDays) return 'Not set';
-    const days = workingDays.split(',');
-    if (days.length === 7) return 'All days';
-    if (days.length === 6 && !days.includes('Sunday')) return 'Mon-Sat';
-    return days.map(day => day.substring(0, 3)).join(', ');
+  const handleEdit = (branch) => {
+    setSelectedBranch(branch);
+    setShowEditModal(true);
+  };
+
+  const handleDelete = (branch) => {
+    setSelectedBranch(branch);
+    setShowDeleteModal(true);
+  };
+
+  const handleModalClose = () => {
+    setSelectedBranch(null);
+    setShowEditModal(false);
+    setShowViewModal(false);
+    setShowDeleteModal(false);
+  };
+
+  const handleSuccess = () => {
+    handleModalClose();
+    onUpdate?.(pagination.page); // Refresh current page
   };
 
   const formatOperatingHours = (openTime, closeTime) => {
     if (!openTime || !closeTime) return 'Not set';
     return `${openTime} - ${closeTime}`;
+  };
+
+  const formatWorkingDays = (workingDays) => {
+    if (!workingDays) return 'Not set';
+    const days = workingDays.split(',').map(day => day.trim());
+    if (days.length === 7) return 'All days';
+    if (days.length === 6 && !days.includes('Sunday')) return 'Mon - Sat';
+    if (days.length === 5 && !days.includes('Saturday') && !days.includes('Sunday')) return 'Mon - Fri';
+    return days.join(', ');
   };
 
   const totalPages = Math.ceil(pagination.total / pagination.limit);
@@ -61,31 +80,8 @@ export default function BranchList({ branches, onUpdate, pagination, onPageChang
 
   return (
     <div className="space-y-6">
-      {/* View Mode Toggle */}
+      {/* View Mode Toggle and Stats */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              viewMode === 'grid' 
-                ? 'bg-blue-100 text-blue-700' 
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Grid View
-          </button>
-          <button
-            onClick={() => setViewMode('table')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              viewMode === 'table' 
-                ? 'bg-blue-100 text-blue-700' 
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Table View
-          </button>
-        </div>
-
         <div className="text-sm text-gray-600">
           Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} branches
         </div>
@@ -183,11 +179,25 @@ export default function BranchList({ branches, onUpdate, pagination, onPageChang
                     <Eye className="w-4 h-4" />
                   </button>
                   <button
+                    onClick={() => onViewBranchStaff?.(branch)}
+                    className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
+                    title="View Staff"
+                  >
+                    <Users className="w-4 h-4" />
+                  </button>
+                  <button
                     onClick={() => handleEdit(branch)}
                     className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
                     title="Edit Branch"
                   >
                     <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(branch)}
+                    className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete Branch"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -287,11 +297,25 @@ export default function BranchList({ branches, onUpdate, pagination, onPageChang
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
+                          onClick={() => onViewBranchStaff?.(branch)}
+                          className="text-green-600 hover:text-green-700 p-1 rounded"
+                          title="View Staff"
+                        >
+                          <Users className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => handleEdit(branch)}
                           className="text-green-600 hover:text-green-700 p-1 rounded"
                           title="Edit Branch"
                         >
                           <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(branch)}
+                          className="text-red-600 hover:text-red-700 p-1 rounded"
+                          title="Delete Branch"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -305,19 +329,21 @@ export default function BranchList({ branches, onUpdate, pagination, onPageChang
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg">
-          <div className="flex flex-1 justify-between sm:hidden">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
             <Button
-              variant="outline"
               onClick={() => onPageChange(pagination.page - 1)}
-              disabled={pagination.page === 1}
+              disabled={pagination.page <= 1}
+              variant="outline"
+              size="sm"
             >
               Previous
             </Button>
             <Button
-              variant="outline"
               onClick={() => onPageChange(pagination.page + 1)}
-              disabled={pagination.page === totalPages}
+              disabled={pagination.page >= totalPages}
+              variant="outline"
+              size="sm"
             >
               Next
             </Button>
@@ -338,15 +364,24 @@ export default function BranchList({ branches, onUpdate, pagination, onPageChang
       {showEditModal && selectedBranch && (
         <BranchEditModal
           branch={selectedBranch}
-          onClose={() => setShowEditModal(false)}
-          onSuccess={onUpdate}
+          onClose={handleModalClose}
+          onSuccess={handleSuccess}
         />
       )}
 
       {showViewModal && selectedBranch && (
         <BranchViewModal
           branch={selectedBranch}
-          onClose={() => setShowViewModal(false)}
+          onClose={handleModalClose}
+          onEdit={handleEdit}
+        />
+      )}
+
+      {showDeleteModal && selectedBranch && (
+        <BranchDeleteModal
+          branch={selectedBranch}
+          onClose={handleModalClose}
+          onConfirm={handleSuccess}
         />
       )}
     </div>

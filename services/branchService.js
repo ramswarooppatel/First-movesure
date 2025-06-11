@@ -1,28 +1,35 @@
 export class BranchService {
-  static async getBranches(params = {}, headers = {}) {
+  static async getBranches(params = {}) {
     try {
-      const queryParams = new URLSearchParams({
-        page: params.page || 1,
-        limit: params.limit || 12,
-        search: params.search || '',
-        status: params.status || 'all',
-        is_head_office: params.is_head_office || 'all',
-        city: params.city || '',
-        state: params.state || ''
-      });
+      const queryParams = new URLSearchParams();
+      
+      if (params.page) queryParams.append('page', params.page);
+      if (params.limit) queryParams.append('limit', params.limit);
+      if (params.search) queryParams.append('search', params.search);
+      if (params.status && params.status !== 'all') queryParams.append('status', params.status);
+      if (params.is_head_office && params.is_head_office !== 'all') queryParams.append('is_head_office', params.is_head_office);
+      if (params.city) queryParams.append('city', params.city);
+      if (params.state) queryParams.append('state', params.state);
+      if (params.companyId) queryParams.append('companyId', params.companyId);
 
-      const response = await fetch(`/api/branches?${queryParams}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers
-        }
-      });
+      const url = `/api/branches?${queryParams.toString()}`;
+      
+      console.log('Fetching branches from:', url);
 
-      return await response.json();
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        throw new Error(`Failed to fetch branches: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('Branches fetched successfully:', result);
+      return result;
     } catch (error) {
       console.error('Error fetching branches:', error);
-      return { success: false, error: 'Failed to fetch branches' };
+      throw error;
     }
   }
 
@@ -32,33 +39,45 @@ export class BranchService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...headers
+          ...headers,
         },
-        body: JSON.stringify(branchData)
+        body: JSON.stringify(branchData),
       });
 
-      return await response.json();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create branch');
+      }
+
+      const result = await response.json();
+      return { success: true, data: result };
     } catch (error) {
       console.error('Error creating branch:', error);
-      return { success: false, error: 'Failed to create branch' };
+      return { success: false, error: error.message };
     }
   }
 
-  static async updateBranch(branchId, branchData, headers = {}) {
+  static async updateBranch(branchId, updateData, headers = {}) {
     try {
       const response = await fetch(`/api/branches/${branchId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...headers
+          ...headers,
         },
-        body: JSON.stringify(branchData)
+        body: JSON.stringify(updateData),
       });
 
-      return await response.json();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update branch');
+      }
+
+      const result = await response.json();
+      return { success: true, data: result };
     } catch (error) {
       console.error('Error updating branch:', error);
-      return { success: false, error: 'Failed to update branch' };
+      return { success: false, error: error.message };
     }
   }
 
@@ -68,37 +87,21 @@ export class BranchService {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          ...headers
-        }
+          ...headers,
+        },
       });
 
-      return await response.json();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete branch');
+      }
+
+      return { success: true };
     } catch (error) {
       console.error('Error deleting branch:', error);
-      return { success: false, error: 'Failed to delete branch' };
-    }
-  }
-
-  static async exportBranches(filters = {}, headers = {}) {
-    try {
-      const queryParams = new URLSearchParams(filters);
-      const response = await fetch(`/api/branches/export?${queryParams}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers
-        }
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        return { success: true, data: blob };
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error exporting branches:', error);
-      return { success: false, error: 'Failed to export branches' };
+      return { success: false, error: error.message };
     }
   }
 }
+
+export default BranchService;

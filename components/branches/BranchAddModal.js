@@ -12,7 +12,7 @@ import {
   Phone, 
   Mail, 
   Clock, 
-  Plus, 
+  Save, 
   Loader,
   AlertCircle,
   CheckCircle,
@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 export default function BranchAddModal({ onClose, onSuccess }) {
-  const { getAuthHeaders } = useAuth();
+  const { user, getAuthHeaders } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -42,6 +42,10 @@ export default function BranchAddModal({ onClose, onSuccess }) {
     closing_time: '18:00',
     working_days: 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'
   });
+
+  const getCompanyId = () => {
+    return user?.company_id || user?.companyId || user?.company?.id || user?.profile?.company_id;
+  };
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -72,16 +76,6 @@ export default function BranchAddModal({ onClose, onSuccess }) {
     setFormData(prev => ({ ...prev, working_days: newDays.join(',') }));
   };
 
-  const generateBranchCode = () => {
-    if (formData.name && formData.city) {
-      const nameCode = formData.name.substring(0, 3).toUpperCase();
-      const cityCode = formData.city.substring(0, 3).toUpperCase();
-      const randomNum = Math.floor(Math.random() * 100).toString().padStart(2, '0');
-      const code = `${nameCode}${cityCode}${randomNum}`;
-      setFormData(prev => ({ ...prev, code }));
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -90,11 +84,22 @@ export default function BranchAddModal({ onClose, onSuccess }) {
       return;
     }
 
+    const companyId = getCompanyId();
+    if (!companyId) {
+      setError('Company ID not available');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      const result = await BranchService.createBranch(formData, getAuthHeaders());
+      const branchData = {
+        ...formData,
+        company_id: companyId
+      };
+
+      const result = await BranchService.createBranch(branchData, getAuthHeaders());
       
       if (result.success) {
         setSuccess('Branch created successfully!');
@@ -121,12 +126,12 @@ export default function BranchAddModal({ onClose, onSuccess }) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-green-600" />
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-blue-600" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Add New Branch</h3>
-              <p className="text-sm text-gray-600">Create a new business location</p>
+              <p className="text-sm text-gray-600">Create a new branch location</p>
             </div>
           </div>
           <button
@@ -155,21 +160,12 @@ export default function BranchAddModal({ onClose, onSuccess }) {
                 required
               />
               
-              <div>
-                <InputField
-                  label="Branch Code"
-                  placeholder="BR001, DEL001, etc."
-                  value={formData.code}
-                  onChange={(value) => handleInputChange('code', value)}
-                />
-                <button
-                  type="button"
-                  onClick={generateBranchCode}
-                  className="mt-1 text-xs text-blue-600 hover:text-blue-700"
-                >
-                  Auto-generate code
-                </button>
-              </div>
+              <InputField
+                label="Branch Code"
+                placeholder="BR001, DEL001, etc."
+                value={formData.code}
+                onChange={(value) => handleInputChange('code', value)}
+              />
               
               <InputField
                 label="Country"
@@ -265,9 +261,7 @@ export default function BranchAddModal({ onClose, onSuccess }) {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Opening Time
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Opening Time</label>
                 <input
                   type="time"
                   value={formData.opening_time}
@@ -277,9 +271,7 @@ export default function BranchAddModal({ onClose, onSuccess }) {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Closing Time
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Closing Time</label>
                 <input
                   type="time"
                   value={formData.closing_time}
@@ -311,19 +303,16 @@ export default function BranchAddModal({ onClose, onSuccess }) {
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                    {day.substring(0, 3)}
+                    {day.slice(0, 3)}
                   </button>
                 );
               })}
             </div>
-            <p className="text-xs text-gray-600 mt-2">
-              Selected: {formData.working_days?.replace(/,/g, ', ') || 'None'}
-            </p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
+            <div className="mb-6 flex items-center space-x-2 p-4 bg-red-50 border border-red-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
               <p className="text-red-800 text-sm">{error}</p>
             </div>
@@ -331,7 +320,7 @@ export default function BranchAddModal({ onClose, onSuccess }) {
 
           {/* Success Message */}
           {success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
+            <div className="mb-6 flex items-center space-x-2 p-4 bg-green-50 border border-green-200 rounded-lg">
               <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
               <p className="text-green-800 text-sm">{success}</p>
             </div>
@@ -351,7 +340,7 @@ export default function BranchAddModal({ onClose, onSuccess }) {
             variant="primary"
             onClick={handleSubmit}
             disabled={loading}
-            icon={loading ? <Loader className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            icon={loading ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           >
             {loading ? 'Creating...' : 'Create Branch'}
           </Button>
