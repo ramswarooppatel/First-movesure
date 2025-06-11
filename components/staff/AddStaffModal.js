@@ -344,9 +344,10 @@ export default function AddStaffModal({ branches, onClose, onSuccess }) {
     }));
   };
 
-  // Photo upload handler - CORRECTED
+  // Photo upload handler - This is already working correctly
   const handlePhotoChange = (photoData, filename) => {
     if (photoData) {
+      // photoData is already a base64 string (data:image/jpeg;base64,...)
       handleInputChange('profile_picture_url', photoData);
     } else {
       handleInputChange('profile_picture_url', '');
