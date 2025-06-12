@@ -108,6 +108,22 @@
   }
 }
 
+/* Add these animations to your existing CSS */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes dash {
+  to { stroke-dashoffset: -100; }
+}
+
 .animate-fade-in-up {
   animation: fade-in-up 0.3s ease-out;
 }
@@ -138,6 +154,20 @@
 
 .animate-confetti-fall {
   animation: confetti-fall 4s linear forwards;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+.animate-dash {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  animation: dash 8s linear infinite;
 }
 
 /* Gradient text utility */

@@ -8,7 +8,15 @@ import {
   TrendingUp
 } from 'lucide-react';
 
-export default function StaffStats({ staff, loading }) {
+export default function StaffStats({ staff, loading, totalCount, aggregatedStats }) {
+  // Debug logging
+  console.log('StaffStats props:', { 
+    staffLength: staff?.length, 
+    totalCount, 
+    loading,
+    aggregatedStats
+  });
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -25,7 +33,7 @@ export default function StaffStats({ staff, loading }) {
   const stats = [
     {
       title: 'Total Staff',
-      value: staff.length,
+      value: aggregatedStats?.total || totalCount || staff.length,
       icon: Users,
       color: 'bg-blue-100 text-blue-600',
       bgColor: 'bg-blue-50',
@@ -33,7 +41,7 @@ export default function StaffStats({ staff, loading }) {
     },
     {
       title: 'Active Staff',
-      value: staff.filter(s => s.is_active).length,
+      value: aggregatedStats?.active || staff.filter(s => s.is_active).length,
       icon: UserCheck,
       color: 'bg-green-100 text-green-600',
       bgColor: 'bg-green-50',
@@ -41,7 +49,7 @@ export default function StaffStats({ staff, loading }) {
     },
     {
       title: 'Admins',
-      value: staff.filter(s => ['super_admin', 'admin'].includes(s.role)).length,
+      value: aggregatedStats?.admins || staff.filter(s => ['super_admin', 'admin'].includes(s.role)).length,
       icon: Crown,
       color: 'bg-purple-100 text-purple-600',
       bgColor: 'bg-purple-50',
@@ -49,7 +57,7 @@ export default function StaffStats({ staff, loading }) {
     },
     {
       title: 'Managers',
-      value: staff.filter(s => s.role === 'branch_manager').length,
+      value: aggregatedStats?.managers || staff.filter(s => s.role === 'branch_manager').length,
       icon: Shield,
       color: 'bg-orange-100 text-orange-600',
       bgColor: 'bg-orange-50',

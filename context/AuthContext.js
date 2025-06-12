@@ -289,7 +289,12 @@ export const AuthProvider = ({ children }) => {
   const getAuthHeaders = () => {
     const accessToken = token || AuthStorage.getAccessToken();
     
-    if (!accessToken) return {};
+    console.log('AuthContext: Getting auth headers, token exists:', !!accessToken);
+    
+    if (!accessToken) {
+      console.warn('AuthContext: No access token available');
+      return {};
+    }
     
     return {
       'Authorization': `Bearer ${accessToken}`,
