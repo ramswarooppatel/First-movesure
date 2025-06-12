@@ -115,12 +115,24 @@ export default function StaffManagement() {
     try {
       const result = await StaffService.getBranches(getAuthHeaders());
       if (result.success) {
-        setBranches(result.data);
+        setBranches(result.data || []); // Ensure it's always an array
+      } else {
+        console.error('Failed to load branches:', result.error);
+        setBranches([]); // Set empty array on error
       }
     } catch (error) {
-      console.error('Error loading branches:', error);
+      console.error('Load branches error:', error);
+      setBranches([]); // Set empty array on error
     }
   };
+
+  // Load branches on component mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadBranches();
+      loadStaffData();
+    }
+  }, [isAuthenticated]);
 
   const handleSearch = (term) => {
     setSearchTerm(term);

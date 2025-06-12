@@ -34,7 +34,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
-export default function StaffEditModal({ staff, branches, onClose, onSuccess }) {
+export default function StaffEditModal({ staff, branches = [], onClose, onSuccess }) {
   const { getAuthHeaders } = useAuth();
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -236,6 +236,9 @@ export default function StaffEditModal({ staff, branches, onClose, onSuccess }) 
     { value: 'branch_staff', label: 'Branch Staff' },
     { value: 'viewer', label: 'Viewer' }
   ];
+
+  // Ensure branches is an array
+  const availableBranches = Array.isArray(branches) ? branches : [];
 
   const genderOptions = [
     { value: '', label: 'Select Gender' },
@@ -539,7 +542,7 @@ export default function StaffEditModal({ staff, branches, onClose, onSuccess }) 
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select Branch</option>
-                    {branches.map(branch => (
+                    {availableBranches.map(branch => (
                       <option key={branch.id} value={branch.id}>
                         {branch.name} {branch.is_head_office && '(Head Office)'}
                       </option>

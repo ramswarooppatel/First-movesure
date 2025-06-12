@@ -325,17 +325,18 @@ export default function StaffList({ staff, branches, onUpdate, pagination, onPag
       {/* Modals */}
       {showEditModal && (
         <StaffEditModal 
-          isOpen={showEditModal} 
+          staff={selectedStaff}
+          branches={branches || []} // Ensure branches is always an array
           onClose={() => setShowEditModal(false)} 
-          staff={selectedStaff} 
-          onUpdate={onUpdate}
+          onSuccess={onUpdate}
         />
       )}
       {showViewModal && (
         <StaffViewModal 
           isOpen={showViewModal} 
           onClose={() => setShowViewModal(false)} 
-          staff={selectedStaff} 
+          staff={selectedStaff}
+          branches={branches || []} // Ensure branches is always an array
         />
       )}
     </div>
