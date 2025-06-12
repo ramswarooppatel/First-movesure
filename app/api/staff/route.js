@@ -6,27 +6,42 @@ import bcrypt from 'bcryptjs';
 // GET staff list
 export async function GET(request) {
   try {
+    console.log('Staff API: Request received');
+    
+    const authHeader = request.headers.get('authorization');
+    console.log('Staff API: Auth header exists:', !!authHeader);
+    console.log('Staff API: Auth header value:', authHeader ? `Bearer ${authHeader.split(' ')[1]?.substring(0, 10)}...` : 'None');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('Staff API: No valid authorization header');
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    
+    if (!token) {
+      console.error('Staff API: Token is empty');
+      return NextResponse.json({ error: 'Invalid token format' }, { status: 401 });
+    }
+
+    console.log('Staff API: Verifying token...');
+    const decoded = AuthUtils.verifyToken(token);
+    
+    if (!decoded) {
+      console.error('Staff API: Token verification failed');
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    console.log('Staff API: Token verified for user:', decoded.userId);
+    
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = parseInt(searchParams.get('limit') || '12'); // Changed to 12
     const search = searchParams.get('search') || '';
     const branch = searchParams.get('branch') || '';
     const role = searchParams.get('role') || '';
     const status = searchParams.get('status') || 'all';
     const department = searchParams.get('department') || '';
-
-    const authHeader = request.headers.get('authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'No token provided' }, { status: 401 });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = AuthUtils.verifyToken(token);
-    
-    if (!decoded) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
 
     const { userId } = decoded;
 
@@ -41,7 +56,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Build query
+    // Build main query
     let query = supabaseAdmin
       .from('users')
       .select(`
@@ -85,31 +100,94 @@ export async function GET(request) {
       `)
       .eq('company_id', userData.company_id);
 
-    // Apply filters
+    // Build count query with same filters
+    let countQuery = supabaseAdmin
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .eq('company_id', userData.company_id);
+
+    // Apply filters to both queries
     if (search.trim()) {
-      query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,designation.ilike.%${search}%,username.ilike.%${search}%`);
+      const searchFilter = `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,designation.ilike.%${search}%,username.ilike.%${search}%`;
+      query = query.or(searchFilter);
+      countQuery = countQuery.or(searchFilter);
     }
 
     if (branch) {
       query = query.eq('branch_id', branch);
+      countQuery = countQuery.eq('branch_id', branch);
     }
 
     if (role) {
       query = query.eq('role', role);
+      countQuery = countQuery.eq('role', role);
     }
 
     if (status !== 'all') {
-      query = query.eq('is_active', status === 'active');
+      const isActive = status === 'active';
+      query = query.eq('is_active', isActive);
+      countQuery = countQuery.eq('is_active', isActive);
     }
 
     if (department) {
-      query = query.eq('department', department);
+      query = query.ilike('department', `%${department}%`);
+      countQuery = countQuery.ilike('department', `%${department}%`);
     }
 
-    // Get total count
-    const { count: totalCount } = await query.select('*', { count: 'exact', head: true });
+    // Get total count first
+    const { count, error: countError } = await countQuery;
+    
+    if (countError) {
+      console.error('Count query error:', countError);
+      throw countError;
+    }
 
-    // Apply pagination
+    console.log('Total staff count:', count);
+
+    // Get aggregated stats for all staff (not just current page)
+    let statsQuery = supabaseAdmin
+      .from('users')
+      .select('is_active, role')
+      .eq('company_id', userData.company_id);
+
+    // Apply same filters to stats query
+    if (search.trim()) {
+      const searchFilter = `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,designation.ilike.%${search}%,username.ilike.%${search}%`;
+      statsQuery = statsQuery.or(searchFilter);
+    }
+
+    if (branch) {
+      statsQuery = statsQuery.eq('branch_id', branch);
+    }
+
+    if (role) {
+      statsQuery = statsQuery.eq('role', role);
+    }
+
+    if (status !== 'all') {
+      const isActive = status === 'active';
+      statsQuery = statsQuery.eq('is_active', isActive);
+    }
+
+    if (department) {
+      statsQuery = statsQuery.ilike('department', `%${department}%`);
+    }
+
+    const { data: statsData, error: statsError } = await statsQuery;
+
+    if (statsError) {
+      console.error('Stats query error:', statsError);
+    }
+
+    // Calculate aggregated stats
+    const aggregatedStats = {
+      total: count || 0,
+      active: statsData ? statsData.filter(s => s.is_active).length : 0,
+      admins: statsData ? statsData.filter(s => ['super_admin', 'admin'].includes(s.role)).length : 0,
+      managers: statsData ? statsData.filter(s => s.role === 'branch_manager').length : 0
+    };
+
+    // Apply pagination and ordering to main query
     const offset = (page - 1) * limit;
     const { data: staff, error } = await query
       .range(offset, offset + limit - 1)
@@ -120,13 +198,24 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Failed to fetch staff' }, { status: 500 });
     }
 
+    console.log('Returning staff data:', {
+      success: true,
+      data: staff || [],
+      total: count || 0,
+      page,
+      limit,
+      totalPages: Math.ceil((count || 0) / limit),
+      stats: aggregatedStats
+    });
+
     return NextResponse.json({
       success: true,
       data: staff || [],
-      total: totalCount || 0,
+      total: count || 0,
       page,
       limit,
-      totalPages: Math.ceil((totalCount || 0) / limit)
+      totalPages: Math.ceil((count || 0) / limit),
+      stats: aggregatedStats
     });
 
   } catch (error) {

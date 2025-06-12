@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import { StaffService } from '@/services/staffService';
 import StaffList from './StaffList';
 import StaffFilters from './StaffFilters';
@@ -19,9 +18,10 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import Button from '@/components/common/Button';
+import { useAuth } from '@/context/AuthContext';
 
 export default function StaffManagement() {
-  const { user, getAuthHeaders } = useAuth();
+  const { getAuthHeaders, isAuthenticated } = useAuth();
   const [staff, setStaff] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,42 +38,74 @@ export default function StaffManagement() {
   const [showFilters, setShowFilters] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10,
+    limit: 12, // Changed from 10 to 12
     total: 0
   });
+  const [staffStats, setStaffStats] = useState({
+    total: 0,
+    active: 0,
+    admins: 0,
+    managers: 0
+  });
+
+  // Check if user is authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setError('Please log in to access staff management');
+      return;
+    }
+    
+    loadStaffData();
+  }, [pagination.page, pagination.limit, searchTerm, filters, isAuthenticated]);
 
   // Load staff data on component mount
-  useEffect(() => {
-    loadStaffData();
-    loadBranches();
-  }, [filters, searchTerm, pagination.page]);
-
   const loadStaffData = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
-      setError('');
+      // Get token from AuthContext instead of localStorage directly
+      const authHeaders = getAuthHeaders();
+      
+      if (!authHeaders.Authorization) {
+        throw new Error('No authentication token found');
+      }
 
       const params = {
-        search: searchTerm,
-        ...filters,
         page: pagination.page,
-        limit: pagination.limit
+        limit: pagination.limit,
+        search: searchTerm,
+        ...filters
       };
 
-      const result = await StaffService.getStaff(params, getAuthHeaders());
+      console.log('Loading staff with params:', params);
+      console.log('Auth headers:', authHeaders);
+
+      const result = await StaffService.getStaff(params, authHeaders);
+
+      console.log('Staff result:', result);
 
       if (result.success) {
-        setStaff(result.data);
+        setStaff(result.data || []);
         setPagination(prev => ({
           ...prev,
-          total: result.total || 0
+          total: result.total || 0,
+          page: result.page || 1,
+          limit: result.limit || 12
         }));
+        
+        // Update stats if provided
+        if (result.stats) {
+          setStaffStats(result.stats);
+        }
       } else {
         setError(result.error || 'Failed to load staff data');
+        setStaff([]);
       }
     } catch (error) {
-      console.error('Error loading staff:', error);
-      setError('Failed to load staff data');
+      console.error('Load staff error:', error);
+      setError(error.message || 'Failed to load staff data');
+      setStaff([]);
     } finally {
       setLoading(false);
     }
@@ -188,7 +220,12 @@ export default function StaffManagement() {
         </div>
 
         {/* Stats */}
-        <StaffStats staff={staff} loading={loading} />
+        <StaffStats 
+          staff={staff} 
+          loading={loading} 
+          totalCount={pagination.total}
+          aggregatedStats={staffStats}
+        />
 
         {/* Search and Filters */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">

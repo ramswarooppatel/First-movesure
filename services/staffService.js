@@ -3,13 +3,17 @@ export const StaffService = {
     try {
       const queryParams = new URLSearchParams();
       
+      // Add all parameters
       Object.keys(params).forEach(key => {
-        if (params[key] && params[key] !== '') {
+        if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
           queryParams.append(key, params[key]);
         }
       });
 
-      const response = await fetch(`/api/staff?${queryParams.toString()}`, {
+      console.log('StaffService: Making request with headers:', headers);
+      console.log('StaffService: Query params:', queryParams.toString());
+
+      const response = await fetch(`/api/staff?${queryParams}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -17,11 +21,17 @@ export const StaffService = {
         }
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('StaffService: API error:', response.status, errorText);
+        throw new Error(`API Error: ${response.status} - ${errorText}`);
+      }
+
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('Get staff error:', error);
-      return { success: false, error: 'Failed to fetch staff data' };
+      console.error('Staff service error:', error);
+      return { success: false, error: error.message || 'Failed to fetch staff' };
     }
   },
 
