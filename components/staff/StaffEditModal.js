@@ -14,26 +14,23 @@ import Button from '@/components/common/Button';
 import { 
   X, 
   User, 
-  Phone, 
   Mail, 
-  Briefcase, 
+  Phone, 
   MapPin, 
+  Building2, 
+  Calendar, 
   Shield, 
-  Save, 
+  UserCheck, 
+  Building,
+  ChevronLeft, 
+  ChevronRight,
+  Save,
   Loader,
   AlertCircle,
   CheckCircle,
   CreditCard,
   Lock,
   Users,
-  Calendar,
-  Building2,
-  Eye,
-  EyeOff,
-  AlertTriangle,
-  Star,
-  Crown,
-  Activity,
   DollarSign,
   Clock,
   UserPlus,
@@ -41,8 +38,6 @@ import {
   Globe,
   Target,
   Zap,
-  ChevronLeft,
-  ChevronRight,
   Copy,
   RefreshCw,
   Info,
@@ -51,32 +46,48 @@ import {
   Camera,
   MapPin as LocationIcon,
   Home,
-  UserCheck,
-  Settings
+  Settings,
+  AlertTriangle,
+  Eye,
+  EyeOff,
+  Briefcase,
+  Activity
 } from 'lucide-react';
 
 export default function StaffEditModal({ staff, branches = [], onClose, onSuccess }) {
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, isAuthenticated, user } = useAuth();
+  
+  // Add debugging for auth state
+  useEffect(() => {
+    console.log('StaffEditModal auth state:', {
+      isAuthenticated,
+      user: user ? { id: user.id, email: user.email } : null,
+      hasAuthHeaders: !!getAuthHeaders().Authorization
+    });
+  }, [isAuthenticated, user, getAuthHeaders]);
+
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [usernameValid, setUsernameValid] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
   const [isDirty, setIsDirty] = useState(false);
   const [autoSave, setAutoSave] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const autoSaveRef = useRef(null);
+  const [managers, setManagers] = useState([]);
+  const [loadingManagers, setLoadingManagers] = useState(false);
 
   // Enhanced role hierarchy and permissions
   const roleHierarchy = {
-    'super_admin': { level: 5, label: 'Super Admin', color: 'bg-gradient-to-r from-purple-600 to-pink-600', icon: Crown },
-    'admin': { level: 4, label: 'Admin', color: 'bg-gradient-to-r from-indigo-600 to-purple-600', icon: Shield },
-    'branch_manager': { level: 3, label: 'Branch Manager', color: 'bg-gradient-to-r from-blue-600 to-indigo-600', icon: Building2 },
-    'branch_staff': { level: 2, label: 'Branch Staff', color: 'bg-gradient-to-r from-green-600 to-blue-600', icon: User },
-    'viewer': { level: 1, label: 'Viewer', color: 'bg-gradient-to-r from-gray-600 to-green-600', icon: Eye }
+    'super_admin': { level: 5, label: 'Super Admin', color: 'purple', icon: Shield },
+    'admin': { level: 4, label: 'Admin', color: 'indigo', icon: Shield },
+    'branch_manager': { level: 3, label: 'Branch Manager', color: 'blue', icon: Building2 },
+    'branch_staff': { level: 2, label: 'Branch Staff', color: 'green', icon: User },
+    'viewer': { level: 1, label: 'Viewer', color: 'gray', icon: User }
   };
 
   // Step-based configuration
@@ -151,10 +162,10 @@ export default function StaffEditModal({ staff, branches = [], onClose, onSucces
         designation: staff.designation || '',
         department: staff.department || '',
         role: staff.role || 'branch_staff',
-        branch_id: staff.branch_id || null, // Fix: Use null instead of empty string
+        branch_id: staff.branch_id || null,
         salary: staff.salary || '',
         joining_date: staff.joining_date || '',
-        reporting_manager_id: staff.reporting_manager_id || null, // Fix: Use null instead of empty string
+        reporting_manager_id: staff.reporting_manager_id || null,
         
         // Address Information
         address: staff.address || '',
@@ -463,6 +474,138 @@ export default function StaffEditModal({ staff, branches = [], onClose, onSucces
     { value: 'pa', label: 'Punjabi' }
   ];
 
+  // Designation options
+  const designationOptions = [
+    'Manager',
+    'Assistant Manager',
+    'Team Lead',
+    'Senior Executive',
+    'Executive',
+    'Associate',
+    'Trainee',
+    'Supervisor',
+    'Coordinator',
+    'Specialist',
+    'Analyst',
+    'Consultant',
+    'Administrator',
+    'Officer',
+    'Assistant'
+  ];
+
+  // Department options
+  const departmentOptions = [
+    'Operations',
+    'Sales',
+    'Marketing',
+    'Human Resources',
+    'Finance',
+    'IT',
+    'Customer Service',
+    'Administration',
+    'Business Development',
+    'Quality Assurance',
+    'Logistics',
+    'Procurement',
+    'Legal',
+    'Research & Development',
+    'Training'
+  ];
+
+  // Enhanced fetch managers function with better error handling and UUID validation
+  const fetchManagers = async (branchId = null, includeAll = true) => {
+    try {
+      setLoadingManagers(true);
+      
+      // Use getAuthHeaders() from auth context instead of localStorage directly
+      const authHeaders = getAuthHeaders();
+      
+      if (!authHeaders.Authorization) {
+        console.error('No authentication token available');
+        setManagers([]);
+        return;
+      }
+      
+      // Build URL with parameters
+      const params = new URLSearchParams();
+      if (branchId) {
+        // Ensure branchId is a valid UUID string
+        const branchIdStr = String(branchId);
+        params.append('branch_id', branchIdStr);
+        params.append('include_all', includeAll.toString());
+      }
+      
+      const url = `/api/staff/managers${params.toString() ? `?${params.toString()}` : ''}`;
+      
+      console.log('Fetching managers from:', url);
+      console.log('Using auth headers:', authHeaders);
+      console.log('Branch ID being sent:', branchId, 'Type:', typeof branchId);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders
+        }
+      });
+
+      console.log('Managers API response status:', response.status);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Managers data:', result);
+        setManagers(result.data || []);
+        
+        // Clear any previous errors
+        if (error && error.includes('Failed to fetch managers')) {
+          setError('');
+        }
+        
+        // You can also use grouped data if needed
+        if (result.grouped) {
+          console.log('Grouped managers:', result.grouped);
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Failed to fetch managers:', response.status, errorData);
+        setError(`Failed to fetch managers: ${errorData.error || 'Unknown error'}`);
+        setManagers([]);
+      }
+    } catch (error) {
+      console.error('Error fetching managers:', error);
+      setError(`Error fetching managers: ${error.message}`);
+      setManagers([]);
+    } finally {
+      setLoadingManagers(false);
+    }
+  };
+
+  // Update the useEffect to wait for authentication
+  useEffect(() => {
+    // Wait for authentication to be ready
+    if (!isAuthenticated) {
+      console.warn('Not authenticated, skipping manager fetch');
+      return;
+    }
+
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders.Authorization) {
+      console.warn('No authorization header available, skipping manager fetch');
+      return;
+    }
+
+    // Add a small delay to ensure auth context is fully loaded
+    const timeoutId = setTimeout(() => {
+      if (formData.branch_id) {
+        fetchManagers(formData.branch_id, true);
+      } else {
+        fetchManagers(null, false);
+      }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [formData.branch_id, isAuthenticated, getAuthHeaders]);
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
@@ -604,133 +747,208 @@ export default function StaffEditModal({ staff, branches = [], onClose, onSucces
       case 3:
         return (
           <div className="space-y-6">
-            {/* Username Field */}
+            {/* Branch Selection */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-semibold text-gray-800 flex items-center">
-                  <User className="w-4 h-4 mr-2 text-purple-600" />
-                  Username *
-                </label>
-                <button
-                  type="button"
-                  onClick={generateUsername}
-                  className="text-sm text-purple-600 hover:text-purple-800 flex items-center space-x-1"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  <span>Generate</span>
-                </button>
-              </div>
-              <UsernameField
-                value={formData.username || ''}
-                onChange={(value) => handleInputChange('username', value)}
-                onValidationChange={setUsernameValid}
-                firstName={formData.first_name}
-                lastName={formData.last_name}
-                required={true}
-                excludeUserId={staff.id}
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Building2 className="w-4 h-4 inline mr-1" />
+                Branch *
+              </label>
+              <select
+                value={formData.branch_id || ''}
+                onChange={(e) => {
+                  const branchId = e.target.value;
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    branch_id: branchId ? branchId : null, // Keep as string for UUID
+                    reporting_manager_id: null // Reset manager when branch changes
+                  }));
+                }}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                required
+              >
+                <option value="">Select Branch</option>
+                {branches.map(branch => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name} {branch.is_head_office ? '(Head Office)' : ''}
+                  </option>
+                ))}
+              </select>
+              {validationErrors.branch_id && (
+                <p className="text-red-500 text-sm mt-1">{validationErrors.branch_id}</p>
+              )}
             </div>
 
-            {/* Job Details */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <InputField
-                label="Designation"
-                placeholder="e.g. Software Engineer"
-                value={formData.designation}
-                onChange={(value) => handleInputChange('designation', value)}
-                icon={<Target className="w-4 h-4" />}
-              />
-              <InputField
-                label="Department"
-                placeholder="e.g. Engineering"
-                value={formData.department}
-                onChange={(value) => handleInputChange('department', value)}
-                icon={<Building2 className="w-4 h-4" />}
-              />
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
-                  <Shield className="w-4 h-4 mr-2 text-purple-600" />
-                  Role *
-                </label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => handleInputChange('role', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                  required
-                >
-                  {Object.entries(roleHierarchy).map(([value, config]) => (
-                    <option key={value} value={value}>
-                      {config.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Role Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Shield className="w-4 h-4 inline mr-1" />
+                Role *
+              </label>
+              <select
+                value={formData.role || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                required
+              >
+                <option value="">Select Role</option>
+                <option value="super_admin">OWNER</option>
+                <option value="admin">Admin</option>
+                <option value="branch_manager">Branch Manager</option>
+                <option value="branch_staff">Branch Staff</option>
+                <option value="viewer">Viewer</option>
+              </select>
+              {validationErrors.role && (
+                <p className="text-red-500 text-sm mt-1">{validationErrors.role}</p>
+              )}
             </div>
 
-            {/* Branch and Dates */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
-                  <Building2 className="w-4 h-4 mr-2 text-purple-600" />
-                  Branch Assignment
-                </label>
-                <select
-                  value={formData.branch_id || ''}
-                  onChange={(e) => handleInputChange('branch_id', e.target.value || null)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                >
-                  <option value="">Select Branch</option>
-                  {availableBranches.map(branch => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.name} {branch.is_head_office && '(Head Office)'}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
-                  <Calendar className="w-4 h-4 mr-2 text-purple-600" />
-                  Joining Date
-                </label>
+            {/* Designation */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <User className="w-4 h-4 inline mr-1" />
+                Designation
+              </label>
+              <select
+                value={formData.designation || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white/80 backdrop-blur-sm"
+              >
+                <option value="">Select Designation</option>
+                {designationOptions.map(designation => (
+                  <option key={designation} value={designation}>
+                    {designation}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-2">
                 <input
-                  type="date"
-                  value={formData.joining_date}
-                  onChange={(e) => handleInputChange('joining_date', e.target.value)}
-                  max={new Date().toISOString().slice(0, 10)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                  type="text"
+                  placeholder="Or enter custom designation"
+                  value={formData.designation || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
                 />
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
-                  <DollarSign className="w-4 h-4 mr-2 text-purple-600" />
-                  Salary (₹)
-                </label>
+            {/* Department */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Building className="w-4 h-4 inline mr-1" />
+                Department
+              </label>
+              <select
+                value={formData.department || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white/80 backdrop-blur-sm"
+              >
+                <option value="">Select Department</option>
+                {departmentOptions.map(department => (
+                  <option key={department} value={department}>
+                    {department}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-2">
                 <input
-                  type="number"
-                  placeholder="50000"
-                  value={formData.salary}
-                  onChange={(e) => handleInputChange('salary', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                  type="text"
+                  placeholder="Or enter custom department"
+                  value={formData.department || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
                 />
               </div>
             </div>
 
             {/* Reporting Manager */}
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
-                <UserPlus className="w-4 h-4 mr-2 text-purple-600" />
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <UserCheck className="w-4 h-4 inline mr-1" />
                 Reporting Manager
               </label>
               <select
                 value={formData.reporting_manager_id || ''}
-                onChange={(e) => handleInputChange('reporting_manager_id', e.target.value || null)}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  reporting_manager_id: e.target.value || null // Fix: Keep as string UUID, not parseInt
+                }))}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                disabled={loadingManagers}
               >
                 <option value="">Select Reporting Manager</option>
-                {/* Add options for managers */}
+                
+                {loadingManagers ? (
+                  <option disabled>Loading managers...</option>
+                ) : (
+                  <>
+                    {/* Group by role for better organization */}
+                    {managers.filter(m => m.role === 'super_admin').length > 0 && (
+                      <optgroup label="🔱 OWNERS">
+                        {managers
+                          .filter(m => m.role === 'super_admin')
+                          .map(manager => (
+                            <option key={manager.id} value={manager.id}>
+                              👑 {manager.full_name} - {manager.branch_name}
+                            </option>
+                          ))
+                        }
+                      </optgroup>
+                    )}
+                    
+                    {managers.filter(m => m.role === 'admin').length > 0 && (
+                      <optgroup label="🛡️ ADMINS">
+                        {managers
+                          .filter(m => m.role === 'admin')
+                          .map(manager => (
+                            <option key={manager.id} value={manager.id}>
+                              🛡️ {manager.full_name} - {manager.branch_name}
+                            </option>
+                          ))
+                        }
+                      </optgroup>
+                    )}
+                    
+                    {managers.filter(m => m.role === 'branch_manager').length > 0 && (
+                      <optgroup label="👥 BRANCH MANAGERS">
+                        {managers
+                          .filter(m => m.role === 'branch_manager')
+                          .map(manager => (
+                            <option key={manager.id} value={manager.id}>
+                              👥 {manager.full_name} - {manager.branch_name}
+                            </option>
+                          ))
+                        }
+                      </optgroup>
+                    )}
+                  </>
+                )}
               </select>
+              
+              {/* Enhanced status messages */}
+              {loadingManagers && (
+                <div className="flex items-center mt-2 text-sm text-gray-500">
+                  <Loader className="w-4 h-4 animate-spin mr-2" />
+                  Loading available managers...
+                </div>
+              )}
+              
+              {!loadingManagers && managers.length === 0 && formData.branch_id && (
+                <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center text-yellow-800">
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    <span className="text-sm">No managers available in this branch</span>
+                  </div>
+                </div>
+              )}
+              
+              {!loadingManagers && managers.length > 0 && (
+                <div className="mt-2 text-xs text-gray-500">
+                  Found {managers.length} manager(s) - 
+                  {managers.filter(m => m.role === 'super_admin').length} Owner(s), 
+                  {managers.filter(m => m.role === 'admin').length} Admin(s), 
+                  {managers.filter(m => m.role === 'branch_manager').length} Branch Manager(s)
+                </div>
+              )}
             </div>
           </div>
         );
@@ -930,7 +1148,7 @@ export default function StaffEditModal({ staff, branches = [], onClose, onSucces
                     <span className="text-sm font-medium">{staff?.id?.slice(0, 8)}...</span>
                   </div>
                   {formData.role && roleHierarchy[formData.role] && (
-                    <div className={`flex items-center space-x-2 ${roleHierarchy[formData.role].color} rounded-full px-3 py-1`}>
+                    <div className={`flex items-center space-x-2 bg-gradient-to-r from-${roleHierarchy[formData.role].color}-600 to-${roleHierarchy[formData.role].color}-600 rounded-full px-3 py-1`}>
                       {React.createElement(roleHierarchy[formData.role].icon, { className: "w-4 h-4" })}
                       <span className="text-sm font-medium">{roleHierarchy[formData.role].label}</span>
                     </div>

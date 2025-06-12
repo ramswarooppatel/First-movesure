@@ -3,76 +3,10 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { AuthUtils } from '@/utils/auth';
 import bcrypt from 'bcryptjs';
 
-// GET single staff member
-export async function GET(request, { params }) {
-  try {
-    const { id } = params;
-    const authHeader = request.headers.get('authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'No token provided' }, { status: 401 });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = AuthUtils.verifyToken(token);
-    
-    if (!decoded) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const { userId } = decoded;
-
-    // Get user's company to verify access
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('company_id')
-      .eq('id', userId)
-      .single();
-
-    if (userError || !userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    // Get staff member with branch information
-    const { data: staff, error } = await supabaseAdmin
-      .from('users')
-      .select(`
-        *,
-        branches:branch_id (
-          id,
-          name,
-          code,
-          city,
-          state,
-          is_head_office,
-          address,
-          phone,
-          email
-        )
-      `)
-      .eq('id', id)
-      .eq('company_id', userData.company_id)
-      .single();
-
-    if (error || !staff) {
-      return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: staff
-    });
-
-  } catch (error) {
-    console.error('Get staff error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
 // UPDATE staff member
 export async function PUT(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params; // Fix: await params before destructuring
     const staffData = await request.json();
     
     const authHeader = request.headers.get('authorization');
@@ -103,7 +37,7 @@ export async function PUT(request, { params }) {
 
     console.log('🔄 Updating staff member:', { id, staffData });
 
-    // Prepare update data
+    // Prepare update data with proper UUID handling
     const updateData = {
       first_name: staffData.first_name,
       last_name: staffData.last_name,
@@ -114,7 +48,7 @@ export async function PUT(request, { params }) {
       designation: staffData.designation,
       department: staffData.department,
       role: staffData.role,
-      branch_id: staffData.branch_id,
+      branch_id: staffData.branch_id || null, // Handle UUID properly
       date_of_birth: staffData.date_of_birth,
       gender: staffData.gender,
       address: staffData.address,
@@ -126,7 +60,7 @@ export async function PUT(request, { params }) {
       pan_number: staffData.pan_number,
       salary: staffData.salary,
       joining_date: staffData.joining_date,
-      reporting_manager_id: staffData.reporting_manager_id,
+      reporting_manager_id: staffData.reporting_manager_id || null, // Fix: Handle UUID properly
       emergency_contact_name: staffData.emergency_contact_name,
       emergency_contact_phone: staffData.emergency_contact_phone,
       is_active: staffData.is_active,
@@ -138,10 +72,22 @@ export async function PUT(request, { params }) {
       updated_at: new Date().toISOString()
     };
 
+    // Fix: Validate reporting_manager_id is a valid UUID if provided
+    if (updateData.reporting_manager_id !== null) {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(updateData.reporting_manager_id)) {
+        console.error('Invalid reporting_manager_id UUID:', updateData.reporting_manager_id);
+        return NextResponse.json(
+          { error: 'Invalid reporting manager selection' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Hash password if provided
     if (staffData.password && staffData.password.trim() !== '') {
       const saltRounds = 12;
-      updateData.password = await bcrypt.hash(staffData.password, saltRounds);
+      updateData.password_hash = await bcrypt.hash(staffData.password, saltRounds);
     }
 
     // Check if username is unique (excluding current staff)
@@ -224,10 +170,76 @@ export async function PUT(request, { params }) {
   }
 }
 
+// GET single staff member
+export async function GET(request, { params }) {
+  try {
+    const { id } = await params; // Fix: await params
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = AuthUtils.verifyToken(token);
+    
+    if (!decoded) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const { userId } = decoded;
+
+    // Get user's company to verify access
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('company_id')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !userData) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Get staff member with branch information
+    const { data: staff, error } = await supabaseAdmin
+      .from('users')
+      .select(`
+        *,
+        branches:branch_id (
+          id,
+          name,
+          code,
+          city,
+          state,
+          is_head_office,
+          address,
+          phone,
+          email
+        )
+      `)
+      .eq('id', id)
+      .eq('company_id', userData.company_id)
+      .single();
+
+    if (error || !staff) {
+      return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: staff
+    });
+
+  } catch (error) {
+    console.error('Get staff error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 // DELETE staff member
 export async function DELETE(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params; // Fix: await params
     const authHeader = request.headers.get('authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
